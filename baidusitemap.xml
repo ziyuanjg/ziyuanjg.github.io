@@ -4,6 +4,55 @@
 
     
   <url>
+    <loc>http://yoursite.com/2017/06/15/mybatis-2/</loc>
+    <lastmod>2017-06-15T07:27:16.199Z</lastmod>
+    <data>
+        <display>
+        <title></title>
+        <pubTime>2017-06-15T07:16:31.375Z</pubTime>
+        
+         
+           
+        </display>
+    </data>
+    </url>
+
+    
+  <url>
+    <loc>http://yoursite.com/2017/06/15/mybatis-3/</loc>
+    <lastmod>2017-06-15T07:26:35.430Z</lastmod>
+    <data>
+        <display>
+        <title>MyBatis源码解析：SqlSession</title>
+        <pubTime>2017-06-15T07:16:35.000Z</pubTime>
+        
+        <tag>MyBatis</tag>
+         
+         
+           
+        </display>
+    </data>
+    </url>
+
+    
+  <url>
+    <loc>http://yoursite.com/2017/06/15/mybatis-1/</loc>
+    <lastmod>2017-06-15T07:24:25.790Z</lastmod>
+    <data>
+        <display>
+        <title>MyBatis源码解析：SqlSessionFactoryBuilder</title>
+        <pubTime>2017-06-15T07:12:01.000Z</pubTime>
+        
+        <tag>MyBatis</tag>
+         
+         
+           
+        </display>
+    </data>
+    </url>
+
+    
+  <url>
     <loc>http://yoursite.com/2017/06/15/mybatis-13/</loc>
     <lastmod>2017-06-15T07:17:14.384Z</lastmod>
     <data>
@@ -145,51 +194,6 @@
         <display>
         <title>mybatis_4</title>
         <pubTime>2017-06-15T07:16:38.000Z</pubTime>
-        
-         
-           
-        </display>
-    </data>
-    </url>
-
-    
-  <url>
-    <loc>http://yoursite.com/2017/06/15/mybatis-3/</loc>
-    <lastmod>2017-06-15T07:16:35.171Z</lastmod>
-    <data>
-        <display>
-        <title>mybatis_3</title>
-        <pubTime>2017-06-15T07:16:35.000Z</pubTime>
-        
-         
-           
-        </display>
-    </data>
-    </url>
-
-    
-  <url>
-    <loc>http://yoursite.com/2017/06/15/mybatis-2/</loc>
-    <lastmod>2017-06-15T07:16:31.378Z</lastmod>
-    <data>
-        <display>
-        <title>mybatis_2</title>
-        <pubTime>2017-06-15T07:16:31.000Z</pubTime>
-        
-         
-           
-        </display>
-    </data>
-    </url>
-
-    
-  <url>
-    <loc>http://yoursite.com/2017/06/15/mybatis-1/</loc>
-    <lastmod>2017-06-15T07:16:13.846Z</lastmod>
-    <data>
-        <display>
-        <title>SqlSessionFactoryBuilder</title>
-        <pubTime>2017-06-15T07:12:01.000Z</pubTime>
         
          
            

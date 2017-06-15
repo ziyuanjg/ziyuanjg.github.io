@@ -83,26 +83,185 @@
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_3]]></title>
+      <title><![CDATA[MyBatis源码解析：SqlSession]]></title>
       <url>/2017/06/15/mybatis-3/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>　　顾名思义SqlSession指的就是数据库会话，之前说过SqlSessionFactory如何生成SqlSession实例，本次不在赘述。</p>
+<p>　　session中包含了两种执行sql的形式，一种是传统的CRUD，另一种是mapper形式。官方文档推荐使用mapper形式，理由是代码更优雅（笑）。其实主要是mapper形式更加简易，而且通过接口+xml的开发模式代码耦合性很低，更符合开闭原则，而且逻辑看起来更加清晰，配合MyBatis的异常系统定位异常位置简单粗暴（笑哭）。先看下传统的调用方式，下面是outline图：<br><img src="/images/mybatis_6.png" alt=""><br><a id="more"></a><br>　　这么多方法自然不能一一说明，此处仅取selectList方法进行示例说明：</p>
+<pre><code>public &lt;E&gt; List&lt;E&gt; selectList(String statement, Object parameter, RowBounds rowBounds) {
+   try {
+     //在configuration中维护了一个Map&lt;String, MappedStatement&gt;集合，在初始化的时候会读取所有sql配置文件中的信息，
+     //每个sql会生成一个对应的上下文MappedStatement，缓存在这个集合中。
+     MappedStatement ms = configuration.getMappedStatement(statement);
+     //具体操作下放至Executor执行
+     return executor.query(ms, wrapCollection(parameter), rowBounds, Executor.NO_RESULT_HANDLER);
+   } catch (Exception e) {
+     throw ExceptionFactory.wrapException(&quot;Error querying database.  Cause: &quot; + e, e);
+   } finally {
+     ErrorContext.instance().reset();
+   }
+ }
+</code></pre><p>　　源码里写的很简练，第一步获取初始化时创建的sql的对应上下文对象，第二部将具体操作下放到Executor中执行。这里就体现出来SqlSession和Executor的职务差别，SqlSession只负责构造一个sql操作的执行环境，Executor只负责对数据库操作，分工明确。</p>
+<p>下面看一下mapper形式是如何执行sql操作的：</p>
+<pre><code>public &lt;T&gt; T getMapper(Class&lt;T&gt; type) {
+   return configuration.&lt;T&gt;getMapper(type, this);
+ }
+</code></pre><p>很简单，直接甩锅给configuration（笑），而configuration里又有一个MapperRegistry对象，这个对象可是很关键，MapperRegistry在初始化时会缓存所有mapper接口的反射工厂实例，下面看两个关键的方法：</p>
+<pre><code>public &lt;T&gt; void addMapper(Class&lt;T&gt; type) {
+    //mapper类限定只能是接口
+    if (type.isInterface()) {
+      //初始化上下文时会注册所有已检索的mapper接口，所以通常不会出现这个异常，除非配置有问题
+      if (hasMapper(type)) {
+        throw new BindingException(&quot;Type &quot; + type + &quot; is already known to the MapperRegistry.&quot;);
+      }
+      //用于finally中校验已注册的mapper对象是否是完整对象，如果对象信息不完整则从缓存中删除
+      boolean loadCompleted = false;
+      try {
+        //knownMappers是一个Map&lt;Class&lt;?&gt;, MapperProxyFactory&lt;?&gt;&gt;集合，
+        //此处实例化一个mapper接口对应的MapperProxyFactory放入集合中，供之后实例化时调用。
+        knownMappers.put(type, new MapperProxyFactory&lt;T&gt;(type));
+        MapperAnnotationBuilder parser = new MapperAnnotationBuilder(config, type);
+        //此处会生成对应的MappedStatement，并且放入Configuration的缓存集合mappedStatements中
+        parser.parse();
+        loadCompleted = true;
+      } finally {
+        if (!loadCompleted) {
+          knownMappers.remove(type);
+        }
+      }
+    }
+  }
+public &lt;T&gt; T getMapper(Class&lt;T&gt; type, SqlSession sqlSession) {
+    //首先获取mapper代理工厂实例
+    final MapperProxyFactory&lt;T&gt; mapperProxyFactory = (MapperProxyFactory&lt;T&gt;) knownMappers.get(type);
+    if (mapperProxyFactory == null) {
+      throw new BindingException(&quot;Type &quot; + type + &quot; is not known to the MapperRegistry.&quot;);
+    }
+    try {
+      //通过工厂实例创建mapper的代理实例
+      return mapperProxyFactory.newInstance(sqlSession);
+    } catch (Exception e) {
+      throw new BindingException(&quot;Error getting mapper instance. Cause: &quot; + e, e);
+    }
+  }
+</code></pre><p>此处可以看到有一个关键的类MapperProxyFactory，顾名思义这是个mapper代理工厂类，而实际的代理类是MapperProxy，下面看一下MapperProxy的invoke方法：</p>
+<pre><code>public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+   try {
+     //如果代理的是object类，则直接调用被代理方法
+     if (Object.class.equals(method.getDeclaringClass())) {
+       return method.invoke(this, args);
+     } else if (isDefaultMethod(method)) {
+       //如果代理执行的方法是接口的默认实现方法（jdk1.8中加入），则创建一个接口实例，执行此方法
+       return invokeDefaultMethod(proxy, method, args);
+     }
+   } catch (Throwable t) {
+     throw ExceptionUtil.unwrapThrowable(t);
+   }
+   //如果执行的方法是属于已注册mapper接口的抽象方法，则执行下面方法。先在methodCache缓存中获取MapperRegistry注册mapper接口时生成
+   //在MapperRegistry注册mapper接口时会创建一个接口方法实例缓存池methodCache，每次执行接口代理方法时会查询缓存池中是否包含此方法的实例，
+   //如果不存在，则创建对应方法实例放入缓存，并执行代理方法。
+   final MapperMethod mapperMethod = cachedMapperMethod(method);
+   return mapperMethod.execute(sqlSession, args);
+ }
+</code></pre><p>这个MapperMethod是MyBatis中的sql操作方法类，暴露给外部调用的也只有execute(SqlSession sqlSession, Object[] args)方法而已，下面看下这个方法的代码：</p>
+<pre><code>public Object execute(SqlSession sqlSession, Object[] args) {
+    Object result;
+    //根据sql类型判断执行的方法
+    switch (command.getType()) {
+      case INSERT: {
+        Object param = method.convertArgsToSqlCommandParam(args);
+        result = rowCountResult(sqlSession.insert(command.getName(), param));
+        break;
+      }
+      case UPDATE: {
+        Object param = method.convertArgsToSqlCommandParam(args);
+        result = rowCountResult(sqlSession.update(command.getName(), param));
+        break;
+      }
+      case DELETE: {
+        Object param = method.convertArgsToSqlCommandParam(args);
+        result = rowCountResult(sqlSession.delete(command.getName(), param));
+        break;
+      }
+      case SELECT:
+        if (method.returnsVoid() &amp;&amp; method.hasResultHandler()) {
+          executeWithResultHandler(sqlSession, args);
+          result = null;
+        } else if (method.returnsMany()) {
+          result = executeForMany(sqlSession, args);
+        } else if (method.returnsMap()) {
+          result = executeForMap(sqlSession, args);
+        } else if (method.returnsCursor()) {
+          result = executeForCursor(sqlSession, args);
+        } else {
+          Object param = method.convertArgsToSqlCommandParam(args);
+          result = sqlSession.selectOne(command.getName(), param);
+        }
+        break;
+      case FLUSH:
+        result = sqlSession.flushStatements();
+        break;
+      default:
+        throw new BindingException(&quot;Unknown execution method for: &quot; + command.getName());
+    }
+    if (result == null &amp;&amp; method.getReturnType().isPrimitive() &amp;&amp; !method.returnsVoid()) {
+      throw new BindingException(&quot;Mapper method &apos;&quot; + command.getName() 
+          + &quot; attempted to return null from a method with a primitive return type (&quot; + method.getReturnType() + &quot;).&quot;);
+    }
+    return result;
+  }
+</code></pre><p>由上可见，其实mapper形式写法最终还是调用SqlSession中的一系列方法，这么看来MyBatis官方文档中说的使用mapper看起来更优雅还真是实至名归（笑）</p>
+]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_2]]></title>
+      <title></title>
       <url>/2017/06/15/mybatis-2/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<hr>
+<p>title: MyBatis源码解析：SqlSessionFactory<br>date: 2017-06-15 15:16:31<br>tags: MyBatis<br>—　</p>
+<p>　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。<br>SqlSessionFactory接口定义了生成SqlSession实例的几种两种方式，MyBatis中有两个默认实现DefaultSqlSessionFactory和SqlSessionManager。SqlSessionManager貌似已经废弃，此处不再写。<br><a id="more"></a><br>　　DefaultSqlSessionFactory内部维护了一个Configuration实例，Configuration中的配置属性是生成SqlSession实例的关键。下面是DefaultSqlSessionFactory的OutLine图：<br><img src="/images/mybatis_5.png" alt=""></p>
+<p>看似很多种重载方法，但是实际执行的只有两个</p>
+<ul>
+<li>openSessionFromDataSource(ExecutorType execType, TransactionIsolationLevel level, boolean autoCommit)</li>
+<li>openSessionFromConnection(ExecutorType execType, Connection connection)</li>
+</ul>
+<p>　　这两个方法的区别就在于是从Configuration中获取事务管理器工厂创建事务管理器，还是从Connection中获取事务管理器。下面取第一个方法做示例：</p>
+<pre><code>private SqlSession openSessionFromDataSource(ExecutorType execType, TransactionIsolationLevel level, boolean autoCommit) {
+  Transaction tx = null;
+  try {
+    //获取数据源对象
+    final Environment environment = configuration.getEnvironment();
+    //获取事务工厂，如果数据源不存在或者数据源中没有实例化事务工厂，则创建ManagedTransactionFactory实例作为事务工厂使用
+    final TransactionFactory transactionFactory = getTransactionFactoryFromEnvironment(environment);
+    //实例化事务控制器
+    tx = transactionFactory.newTransaction(environment.getDataSource(), level, autoCommit);
+    //实例化Executor执行器
+    final Executor executor = configuration.newExecutor(tx, execType);
+    //实例化SqlSession
+    return new DefaultSqlSession(configuration, executor, autoCommit);
+  } catch (Exception e) {
+    closeTransaction(tx); // may have fetched a connection so lets call close()
+    throw ExceptionFactory.wrapException(&quot;Error opening session.  Cause: &quot; + e, e);
+  } finally {
+    ErrorContext.instance().reset();
+  }
+}　
+</code></pre>]]></content>
       
         
     </entry>
     
     <entry>
-      <title><![CDATA[SqlSessionFactoryBuilder]]></title>
+      <title><![CDATA[MyBatis源码解析：SqlSessionFactoryBuilder]]></title>
       <url>/2017/06/15/mybatis-1/</url>
-      <content type="html"><![CDATA[<p>　　SqlSessionFactoryBuilder是MyBatis的执行入口，使用MyBatis首先要构建一个SqlSessionFactory容器，SqlSessionFactoryBuilder就是构建SqlSessionFactory的创建者。<br>　　以下是SqlSessionFactoryBuilder的OutLine：<br><img src="/images/mybatis_4.png" alt=""></p>
-<p>实际执行的build只有三个:</p>
+      <content type="html"><![CDATA[<p>　　SqlSessionFactoryBuilder是MyBatis的执行入口，使用MyBatis首先要构建一个SqlSessionFactory容器，SqlSessionFactoryBuilder就是构建SqlSessionFactory的创建者。<br>　　以下是SqlSessionFactoryBuilder的OutLine：<br><img src="/images/mybatis_4.png" alt=""><br><a id="more"></a><br>实际执行的build只有三个:</p>
 <ul>
 <li>build(InputStream inputStream, String environment, Properties properties)</li>
 <li>build(Reader reader, String environment, Properties properties)</li>
@@ -148,6 +307,12 @@
 </code></pre><p>　　值得注意的是properties和environments，这两个在XMLConfigBuilder的构造方法中是可以当做参数传入的，其中properties会在初始化properties标签时将参数中的properties添加到对应集合中，而environments如果不为空，则会使用id为environments对应值的数据源，否则会使用默认的数据源。其余每个方法对应的都是MyBatis配置文件中的一种标签，具体内容可以在MyBatis的官方文档查询，此处不再赘述。</p>
 ]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     

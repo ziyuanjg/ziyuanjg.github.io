@@ -276,7 +276,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-3/">mybatis_3</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a>
     </h1>
   
 
@@ -287,7 +287,9 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>　　顾名思义SqlSession指的就是数据库会话，之前说过SqlSessionFactory如何生成SqlSession实例，本次不在赘述。</p>
+<p>　　session中包含了两种执行sql的形式，一种是传统的CRUD，另一种是mapper形式。官方文档推荐使用mapper形式，理由是代码更优雅（笑）。其实主要是mapper形式更加简易，而且通过接口+xml的开发模式代码耦合性很低，更符合开闭原则，而且逻辑看起来更加清晰，配合MyBatis的异常系统定位异常位置简单粗暴（笑哭）。先看下传统的调用方式，下面是outline图：<br><img src="/images/mybatis_6.png" alt=""><br>
+          
       
     </div>
     
@@ -296,6 +298,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-3/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -319,7 +329,7 @@
   
     <div class="article-meta">
       <a  href="/2017/06/15/mybatis-2/" class="article-date">
-      <time datetime="2017-06-15T07:16:31.000Z" itemprop="datePublished">2017-06-15</time>
+      <time datetime="2017-06-15T07:16:31.375Z" itemprop="datePublished">2017-06-15</time>
 </a>
 
     </div>
@@ -329,22 +339,13 @@
       <input type="hidden" class="isFancy" />
     
     
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-2/">mybatis_2</a>
-    </h1>
-  
-
-
-      </header>
-      
-    
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <hr>
+<p>title: MyBatis源码解析：SqlSessionFactory<br>date: 2017-06-15 15:16:31<br>tags: MyBatis<br>—　</p>
+<p>　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。<br>SqlSessionFactory接口定义了生成SqlSession实例的几种两种方式，MyBatis中有两个默认实现DefaultSqlSessionFactory和SqlSessionManager。SqlSessionManager貌似已经废弃，此处不再写。<br>
+          
       
     </div>
     
@@ -353,6 +354,10 @@
       
 
       
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-2/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -390,7 +395,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-1/">SqlSessionFactoryBuilder</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a>
     </h1>
   
 
@@ -401,52 +406,8 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        <p>　　SqlSessionFactoryBuilder是MyBatis的执行入口，使用MyBatis首先要构建一个SqlSessionFactory容器，SqlSessionFactoryBuilder就是构建SqlSessionFactory的创建者。<br>　　以下是SqlSessionFactoryBuilder的OutLine：<br><img src="/images/mybatis_4.png" alt=""></p>
-<p>实际执行的build只有三个:</p>
-<ul>
-<li>build(InputStream inputStream, String environment, Properties properties)</li>
-<li>build(Reader reader, String environment, Properties properties)</li>
-<li>build(Configuration config)</li>
-</ul>
-<p>　　前两种的区别只有使用字符流还是字节流，本质上都是通过读取MyBatis的配置文件来进行初始化工作。其中environment可以指定使用的数据源，需要使用多个库的时候会用到这个参数，需要注意的是每个SqlSessionFactory只能对应一个数据源。properties参数可以定义额外的配置参数，与properties文件中配置的功能相同。而第三种是以编程的方式对MyBatis容器进行初始化。（注：前两种最后还是会调用第三种方法）</p>
-<p>下面取第一个build的源码进行示例：</p>
-<pre><code>public SqlSessionFactory build(InputStream inputStream, String environment, Properties properties) {
-    try {
-      XMLConfigBuilder parser = new XMLConfigBuilder(inputStream, environment, properties);
-      return build(parser.parse());
-    } catch (Exception e) {
-      throw ExceptionFactory.wrapException(&quot;Error building SqlSession.&quot;, e);
-    } finally {
-      ErrorContext.instance().reset();
-      try {
-        inputStream.close();
-      } catch (IOException e) {
-        // Intentionally ignore. Prefer previous error.
-      }
-    }
-}
-</code></pre><p>由上面代码一看可知，初始化配置的关键在于XMLConfigBuilder这个解析类的parse()，parse()方法对MyBatis的一系列标签进行归类注册，创建容器实例，具体代码如下：</p>
-<pre><code>private void parseConfiguration(XNode root) {
-    try {
-      propertiesElement(root.evalNode(&quot;properties&quot;));
-      Properties settings = settingsAsProperties(root.evalNode(&quot;settings&quot;));
-      loadCustomVfs(settings);
-      typeAliasesElement(root.evalNode(&quot;typeAliases&quot;));
-      pluginElement(root.evalNode(&quot;plugins&quot;));
-      objectFactoryElement(root.evalNode(&quot;objectFactory&quot;));
-      objectWrapperFactoryElement(root.evalNode(&quot;objectWrapperFactory&quot;));
-      reflectorFactoryElement(root.evalNode(&quot;reflectorFactory&quot;));
-      settingsElement(settings);
-      environmentsElement(root.evalNode(&quot;environments&quot;));
-      databaseIdProviderElement(root.evalNode(&quot;databaseIdProvider&quot;));
-      typeHandlerElement(root.evalNode(&quot;typeHandlers&quot;));
-      mapperElement(root.evalNode(&quot;mappers&quot;));
-    } catch (Exception e) {
-      throw new BuilderException(&quot;Error parsing SQL Mapper Configuration. Cause: &quot; + e, e);
-    }
-}
-</code></pre><p>　　值得注意的是properties和environments，这两个在XMLConfigBuilder的构造方法中是可以当做参数传入的，其中properties会在初始化properties标签时将参数中的properties添加到对应集合中，而environments如果不为空，则会使用id为environments对应值的数据源，否则会使用默认的数据源。其余每个方法对应的都是MyBatis配置文件中的一种标签，具体内容可以在MyBatis的官方文档查询，此处不再赘述。</p>
-
+              <p>　　SqlSessionFactoryBuilder是MyBatis的执行入口，使用MyBatis首先要构建一个SqlSessionFactory容器，SqlSessionFactoryBuilder就是构建SqlSessionFactory的创建者。<br>　　以下是SqlSessionFactoryBuilder的OutLine：<br><img src="/images/mybatis_4.png" alt=""><br>
+          
       
     </div>
     
@@ -455,6 +416,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-1/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>

@@ -7,15 +7,20 @@
   
   
   
-  <title>mybatis_2 | Hexo</title>
+  <title>Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="article">
-<meta property="og:title" content="mybatis_2">
+  <meta name="description" content="title: MyBatis源码解析：SqlSessionFactorydate: 2017-06-15 15:16:31tags: MyBatis—　 　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。SqlSessionFactor">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hexo">
 <meta property="og:url" content="http://yoursite.com/2017/06/15/mybatis-2/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:updated_time" content="2017-06-15T07:16:31.378Z">
+<meta property="og:description" content="title: MyBatis源码解析：SqlSessionFactorydate: 2017-06-15 15:16:31tags: MyBatis—　 　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。SqlSessionFactor">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_5.png">
+<meta property="og:updated_time" content="2017-06-15T07:27:16.199Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="mybatis_2">
+<meta name="twitter:title" content="Hexo">
+<meta name="twitter:description" content="title: MyBatis源码解析：SqlSessionFactorydate: 2017-06-15 15:16:31tags: MyBatis—　 　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。SqlSessionFactor">
+<meta name="twitter:image" content="http://yoursite.com/images/mybatis_5.png">
   
     <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
   
@@ -258,7 +263,7 @@
   
     <div class="article-meta">
       <a  href="/2017/06/15/mybatis-2/" class="article-date">
-      <time datetime="2017-06-15T07:16:31.000Z" itemprop="datePublished">2017-06-15</time>
+      <time datetime="2017-06-15T07:16:31.375Z" itemprop="datePublished">2017-06-15</time>
 </a>
 
     </div>
@@ -268,29 +273,39 @@
       <input type="hidden" class="isFancy" />
     
     
-      <header class="article-header">
-        
-  
-    <h1 class="article-title" itemprop="name">
-      mybatis_2
-    </h1>
-  
-
-
-      </header>
-      
-      <div class="article-info article-info-post">
-        
-
-        
-        <div class="clearfix"></div>
-      </div>
-      
-    
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+        <hr>
+<p>title: MyBatis源码解析：SqlSessionFactory<br>date: 2017-06-15 15:16:31<br>tags: MyBatis<br>—　</p>
+<p>　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。<br>SqlSessionFactory接口定义了生成SqlSession实例的几种两种方式，MyBatis中有两个默认实现DefaultSqlSessionFactory和SqlSessionManager。SqlSessionManager貌似已经废弃，此处不再写。<br><a id="more"></a><br>　　DefaultSqlSessionFactory内部维护了一个Configuration实例，Configuration中的配置属性是生成SqlSession实例的关键。下面是DefaultSqlSessionFactory的OutLine图：<br><img src="/images/mybatis_5.png" alt=""></p>
+<p>看似很多种重载方法，但是实际执行的只有两个</p>
+<ul>
+<li>openSessionFromDataSource(ExecutorType execType, TransactionIsolationLevel level, boolean autoCommit)</li>
+<li>openSessionFromConnection(ExecutorType execType, Connection connection)</li>
+</ul>
+<p>　　这两个方法的区别就在于是从Configuration中获取事务管理器工厂创建事务管理器，还是从Connection中获取事务管理器。下面取第一个方法做示例：</p>
+<pre><code>private SqlSession openSessionFromDataSource(ExecutorType execType, TransactionIsolationLevel level, boolean autoCommit) {
+  Transaction tx = null;
+  try {
+    //获取数据源对象
+    final Environment environment = configuration.getEnvironment();
+    //获取事务工厂，如果数据源不存在或者数据源中没有实例化事务工厂，则创建ManagedTransactionFactory实例作为事务工厂使用
+    final TransactionFactory transactionFactory = getTransactionFactoryFromEnvironment(environment);
+    //实例化事务控制器
+    tx = transactionFactory.newTransaction(environment.getDataSource(), level, autoCommit);
+    //实例化Executor执行器
+    final Executor executor = configuration.newExecutor(tx, execType);
+    //实例化SqlSession
+    return new DefaultSqlSession(configuration, executor, autoCommit);
+  } catch (Exception e) {
+    closeTransaction(tx); // may have fetched a connection so lets call close()
+    throw ExceptionFactory.wrapException(&quot;Error opening session.  Cause: &quot; + e, e);
+  } finally {
+    ErrorContext.instance().reset();
+  }
+}　
+</code></pre>
       
     </div>
     
@@ -298,12 +313,12 @@
   
     
     <div class="copyright">
-        <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-2/">mybatis_2</a></p>
+        <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-2/"></a></p>
         <p><span>文章作者:</span><a  href="/" title="访问 Arthur 的个人博客">Arthur</a></p>
         <p><span>发布时间:</span>2017年06月15日 - 15时16分</p>
-        <p><span>最后更新:</span>2017年06月15日 - 15时16分</p>
+        <p><span>最后更新:</span>2017年06月15日 - 15时27分</p>
         <p>
-            <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-2/" title="mybatis_2">http://yoursite.com/2017/06/15/mybatis-2/</a>
+            <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-2/" title="">http://yoursite.com/2017/06/15/mybatis-2/</a>
             <span class="copy-path" data-clipboard-text="原文: http://yoursite.com/2017/06/15/mybatis-2/　　作者: Arthur" title=""></span>
         </p>
         <p>
@@ -319,14 +334,14 @@
       <strong class="article-nav-caption"><</strong>
       <div class="article-nav-title">
         
-          mybatis_3
+          MyBatis源码解析：SqlSession
         
       </div>
     </a>
   
   
     <a  href="/2017/06/15/mybatis-1/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">SqlSessionFactoryBuilder</div>
+      <div class="article-nav-title">MyBatis源码解析：SqlSessionFactoryBuilder</div>
       <strong class="article-nav-caption">></strong>
     </a>
   
@@ -409,18 +424,18 @@
 
     <div class="scroll" id="post-nav-button">
         
-            <a  href="/2017/06/15/mybatis-3/" title="上一篇: mybatis_3">
+            <a  href="/2017/06/15/mybatis-3/" title="上一篇: MyBatis源码解析：SqlSession">
                 <i class="fa fa-angle-left"></i>
             </a>
         
         <a title="文章列表"><i class="fa fa-bars"></i><i class="fa fa-times"></i></a>
         
-            <a  href="/2017/06/15/mybatis-1/" title="下一篇: SqlSessionFactoryBuilder">
+            <a  href="/2017/06/15/mybatis-1/" title="下一篇: MyBatis源码解析：SqlSessionFactoryBuilder">
                 <i class="fa fa-angle-right"></i>
             </a>
         
     </div>
-    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-13/">mybatis_13</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">mybatis_12</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">mybatis_11</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">mybatis_10</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">mybatis_9</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">mybatis_8</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">mybatis_7</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">mybatis_6</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">mybatis_5</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">mybatis_4</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">mybatis_3</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">mybatis_2</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/13/hello-world/">Hello World</a></li></ul>
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-13/">mybatis_13</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">mybatis_12</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">mybatis_11</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">mybatis_10</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">mybatis_9</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">mybatis_8</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">mybatis_7</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">mybatis_6</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">mybatis_5</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">mybatis_4</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">mybatis-2</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/13/hello-world/">Hello World</a></li></ul>
     <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
     <script>
         $(".post-list").addClass("toc-article");
