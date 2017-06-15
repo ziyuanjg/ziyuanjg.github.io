@@ -258,10 +258,10 @@
 </nav>
       <div class="body-wrap">
   
-    <article id="post-mybatis-3" class="article article-type-post" itemscope itemprop="blogPost">
+    <article id="post-mybatis-2" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
-      <a  href="/2017/06/15/mybatis-3/" class="article-date">
+      <a  href="/2017/06/15/mybatis-2/" class="article-date">
       <time datetime="2017-06-15T07:16:35.000Z" itemprop="datePublished">2017-06-15</time>
 </a>
 
@@ -276,7 +276,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a>
     </h1>
   
 
@@ -287,8 +287,7 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-              <p>　　顾名思义SqlSession指的就是数据库会话，之前说过SqlSessionFactory如何生成SqlSession实例，本次不在赘述。</p>
-<p>　　session中包含了两种执行sql的形式，一种是传统的CRUD，另一种是mapper形式。官方文档推荐使用mapper形式，理由是代码更优雅（笑）。其实主要是mapper形式更加简易，而且通过接口+xml的开发模式代码耦合性很低，更符合开闭原则，而且逻辑看起来更加清晰，配合MyBatis的异常系统定位异常位置简单粗暴（笑哭）。先看下传统的调用方式，下面是outline图：<br><img src="/images/mybatis_6.png" alt=""><br>
+              <p>　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。<br>SqlSessionFactory接口定义了生成SqlSession实例的几种两种方式，MyBatis中有两个默认实现DefaultSqlSessionFactory和SqlSessionManager。SqlSessionManager貌似已经废弃，此处不再写。<br>
           
       
     </div>
@@ -302,58 +301,6 @@
         <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
     </div>
 
-      
-        <p class="article-more-link">
-          <a   href="/2017/06/15/mybatis-3/#more">查看更多 >></a>
-        </p>
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-
-
-  
-    <article id="post-mybatis-2" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a  href="/2017/06/15/mybatis-2/" class="article-date">
-      <time datetime="2017-06-15T07:16:31.375Z" itemprop="datePublished">2017-06-15</time>
-</a>
-
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-          
-              <hr>
-<p>title: MyBatis源码解析：SqlSessionFactory<br>date: 2017-06-15 15:16:31<br>tags: MyBatis<br>—　</p>
-<p>　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。<br>SqlSessionFactory接口定义了生成SqlSession实例的几种两种方式，MyBatis中有两个默认实现DefaultSqlSessionFactory和SqlSessionManager。SqlSessionManager貌似已经废弃，此处不再写。<br>
-          
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-
-      
       
         <p class="article-more-link">
           <a   href="/2017/06/15/mybatis-2/#more">查看更多 >></a>

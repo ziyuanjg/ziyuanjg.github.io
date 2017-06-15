@@ -7,15 +7,25 @@
   
   
   
-  <title>mybatis_12 | Hexo</title>
+  <title>MyBatis源码解析：动态SQL | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="article">
-<meta property="og:title" content="mybatis_12">
+  <meta name="description" content="1. MyBatis中和动态SQl相关的类1.1. BaseBuilder">
+<meta name="keywords" content="MyBatis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MyBatis源码解析：动态SQL">
 <meta property="og:url" content="http://yoursite.com/2017/06/15/mybatis-12/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:updated_time" content="2017-06-15T07:17:11.594Z">
+<meta property="og:description" content="1. MyBatis中和动态SQl相关的类1.1. BaseBuilder">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_24.png">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_25.png">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_26.png">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_26.png">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_28.png">
+<meta property="og:updated_time" content="2017-06-15T09:18:44.250Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="mybatis_12">
+<meta name="twitter:title" content="MyBatis源码解析：动态SQL">
+<meta name="twitter:description" content="1. MyBatis中和动态SQl相关的类1.1. BaseBuilder">
+<meta name="twitter:image" content="http://yoursite.com/images/mybatis_24.png">
   
     <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
   
@@ -272,7 +282,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      mybatis_12
+      MyBatis源码解析：动态SQL
     </h1>
   
 
@@ -283,6 +293,10 @@
         
 
         
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
         <div class="clearfix"></div>
       </div>
       
@@ -290,7 +304,233 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+        <h1 id="1-MyBatis中和动态SQl相关的类"><a href="#1-MyBatis中和动态SQl相关的类" class="headerlink" title="1. MyBatis中和动态SQl相关的类"></a>1. MyBatis中和动态SQl相关的类</h1><h2 id="1-1-BaseBuilder"><a href="#1-1-BaseBuilder" class="headerlink" title="1.1. BaseBuilder"></a>1.1. BaseBuilder</h2><p><img src="/images/mybatis_24.png" alt=""><br><a id="more"></a></p>
+<p>BaseBuilder主要负责解析xml配置文件，以及构建各种相关的实例：</p>
+<ul>
+<li>XMLConfigBuilder：解析全局xml配置文件</li>
+<li>XMLMapperBuilder：解析mapper节点配置</li>
+<li>XMLStatementBuilder：解析CRUD节点配置</li>
+<li>XMLScriptBuilder：解析节点中的sql</li>
+<li>MapperBuilderAssistant：辅助构建工具类</li>
+<li>SqlSourceBuilder：sql源构建类</li>
+</ul>
+<h2 id="1-2-SqlNode"><a href="#1-2-SqlNode" class="headerlink" title="1.2. SqlNode"></a>1.2. SqlNode</h2><p><img src="/images/mybatis_25.png" alt=""></p>
+<p>SqlNode对应的就是动态sql的各种标签了：</p>
+<ul>
+<li>ChooseSqlNode：对应choose标签，类似于switch功能</li>
+<li>ForEachSqlNode：对应forEach标签</li>
+<li>IfSqlNode：对应if标签和when标签</li>
+<li>MixedSqlNode：SqlNode集合类，内部维护了一个SqlNode集合，储存一个Statement中的所有动态sql节点元素</li>
+<li>StaticTextSqlNode：静态sql节点</li>
+<li>TextSqlNode：文本型节点的默认类型</li>
+<li>TrimSqlNode：过滤sql前后缀，支持set和where类型</li>
+<li>SetSqlNode：TrimSqlNode的set调用</li>
+<li>WhereSqlNode：TrimSqlNode的where调用</li>
+<li>VarDeclSqlNode：对应bind标签，用于解析Ognl表达式</li>
+</ul>
+<h2 id="1-3-SqlSource"><a href="#1-3-SqlSource" class="headerlink" title="1.3. SqlSource"></a>1.3. SqlSource</h2><p><img src="/images/mybatis_26.png" alt=""><br>SqlSource是处理xml配置文件中的sql部分的工具：</p>
+<ul>
+<li>DynamicSqlSource：创建动态sqlSourse</li>
+<li>ProviderSqlSource：处理通用mapper</li>
+<li>RawSqlSource：处理静态sql</li>
+<li>StaticSqlSource：创建静态sqlSourse</li>
+</ul>
+<h2 id="1-4-LanguageDriver"><a href="#1-4-LanguageDriver" class="headerlink" title="1.4. LanguageDriver"></a>1.4. LanguageDriver</h2><p>　　LanguageDriver主要实现类是XMLLanguageDriver，XMLLanguageDriver内部使用XMLScriptBuilder解析sql节点，用于生成SqlSource。</p>
+<h1 id="2-动态Sql创建流程"><a href="#2-动态Sql创建流程" class="headerlink" title="2. 动态Sql创建流程"></a>2. 动态Sql创建流程</h1><p><img src="/images/mybatis_26.png" alt=""></p>
+<p>　　mapper的路径既然是在全局xml中配置的，那么入口自然也要落在创建运行环境上下文中</p>
+<pre><code>private void parseConfiguration(XNode root) {
+    try {
+     //TODO
+//此处进入解析mappers节点流程
+      mapperElement(root.evalNode(&quot;mappers&quot;));
+    } catch (Exception e) {
+      throw new BuilderException(&quot;Error parsing SQL Mapper Configuration. Cause: &quot; + e, e);
+    }
+  }
+private void mapperElement(XNode parent) throws Exception {
+    if (parent != null) {
+      for (XNode child : parent.getChildren()) {
+        if (&quot;package&quot;.equals(child.getName())) {
+          //如果配置的是package，会遍历包下所有的mapper进行注册
+          String mapperPackage = child.getStringAttribute(&quot;name&quot;);
+          configuration.addMappers(mapperPackage);
+        } else {
+          //三种配置方式由县级为Resource&gt;url&gt;class
+          String resource = child.getStringAttribute(&quot;resource&quot;);
+          String url = child.getStringAttribute(&quot;url&quot;);
+          String mapperClass = child.getStringAttribute(&quot;class&quot;);
+          if (resource != null &amp;&amp; url == null &amp;&amp; mapperClass == null) {
+            ErrorContext.instance().resource(resource);
+            InputStream inputStream = Resources.getResourceAsStream(resource);
+            XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
+            //处理内部mapper节点
+            mapperParser.parse();
+          } else if (resource == null &amp;&amp; url != null &amp;&amp; mapperClass == null) {
+            ErrorContext.instance().resource(url);
+            InputStream inputStream = Resources.getUrlAsStream(url);
+            XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, url, configuration.getSqlFragments());
+            mapperParser.parse();
+          } else if (resource == null &amp;&amp; url == null &amp;&amp; mapperClass != null) {
+            Class&lt;?&gt; mapperInterface = Resources.classForName(mapperClass);
+            configuration.addMapper(mapperInterface);
+          } else {
+            throw new BuilderException(&quot;A mapper element may only specify a url, resource or class, but not more than one.&quot;);
+          }
+        }
+      }
+    }
+  }
+</code></pre><p>　　下面就进入了XMLMapperBuilder中：</p>
+<pre><code>public void parse() {
+    if (!configuration.isResourceLoaded(resource)) {
+      //避免重复加载同一mapper
+      //解析mapper节点
+      configurationElement(parser.evalNode(&quot;/mapper&quot;));
+      //在缓存中添加mapper标识，避免重复加载
+      configuration.addLoadedResource(resource);
+      //绑定命名空间
+      bindMapperForNamespace();
+    }
+
+    parsePendingResultMaps();
+    parsePendingChacheRefs();
+    parsePendingStatements();
+  }
+
+private void configurationElement(XNode context) {
+    try {
+      String namespace = context.getStringAttribute(&quot;namespace&quot;);
+      if (namespace == null || namespace.equals(&quot;&quot;)) {
+        throw new BuilderException(&quot;Mapper&apos;s namespace cannot be empty&quot;);
+      }
+      builderAssistant.setCurrentNamespace(namespace);
+      //处理缓存标签，cache会覆盖cache-ref
+      cacheRefElement(context.evalNode(&quot;cache-ref&quot;));
+      cacheElement(context.evalNode(&quot;cache&quot;));
+      //已废弃，不推荐使用
+      parameterMapElement(context.evalNodes(&quot;/mapper/parameterMap&quot;));
+      //处理外部resultMap引用
+      resultMapElements(context.evalNodes(&quot;/mapper/resultMap&quot;));
+      //处理sql片段
+      sqlElement(context.evalNodes(&quot;/mapper/sql&quot;));
+      //处理CRUD，也是动态sql的关键
+      buildStatementFromContext(context.evalNodes(&quot;select|insert|update|delete&quot;));
+    } catch (Exception e) {
+      throw new BuilderException(&quot;Error parsing Mapper XML. Cause: &quot; + e, e);
+    }
+  }
+
+  private void buildStatementFromContext(List&lt;XNode&gt; list) {
+    if (configuration.getDatabaseId() != null) {
+      buildStatementFromContext(list, configuration.getDatabaseId());
+    }
+    buildStatementFromContext(list, null);
+  }
+
+  private void buildStatementFromContext(List&lt;XNode&gt; list, String requiredDatabaseId) {
+    for (XNode context : list) {
+      final XMLStatementBuilder statementParser = new XMLStatementBuilder(configuration, builderAssistant, context, requiredDatabaseId);
+      try {
+        statementParser.parseStatementNode();
+      } catch (IncompleteElementException e) {
+        configuration.addIncompleteStatement(statementParser);
+      }
+    }
+  }
+</code></pre><p>　　接下来进入XMLStatementBuilder 处理具体sql内容：</p>
+<pre><code>public void parseStatementNode() {
+    //.....
+    LanguageDriver langDriver = getLanguageDriver(lang);
+    //.....
+    //创建sql源
+    SqlSource sqlSource = langDriver.createSqlSource(configuration, context, parameterTypeClass);
+    //.......
+  }
+</code></pre><p>　　由于是动态sql，所以下面进入XMLLanguageDriver实现：</p>
+<pre><code>public SqlSource createSqlSource(Configuration configuration, XNode script, Class&lt;?&gt; parameterType) {
+    XMLScriptBuilder builder = new XMLScriptBuilder(configuration, script, parameterType);
+    return builder.parseScriptNode();
+  }
+</code></pre><p>　　XMLLanguageDriver很懒，立即将任务转给了XMLScriptBuilder：</p>
+<pre><code>public SqlSource parseScriptNode() {
+    //遍历sql中的所有节点，判断是动态sql还是静态sql
+    List&lt;SqlNode&gt; contents = parseDynamicTags(context);
+    //MixedSqlNode表示sql节点集合
+    MixedSqlNode rootSqlNode = new MixedSqlNode(contents);
+    SqlSource sqlSource = null;
+    if (isDynamic) {
+      //动态sql
+      sqlSource = new DynamicSqlSource(configuration, rootSqlNode);
+    } else {
+      //静态sql
+      sqlSource = new RawSqlSource(configuration, rootSqlNode, parameterType);
+    }
+    return sqlSource;
+  }
+</code></pre><p>　　至此就完成了mapper配置文件的读取注册流程。</p>
+<p>3、通过sql模板生成动态sql流程<br><img src="/images/mybatis_28.png" alt=""></p>
+<p>　　既然是动态sql，那自然是运行时才会根据参数生成执行sql了，下面以query为例，简析生成动态sql的流程：<br>　　首先在CachingExecutor中调用query</p>
+<pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+    BoundSql boundSql = ms.getBoundSql(parameterObject);
+    CacheKey key = createCacheKey(ms, parameterObject, rowBounds, boundSql);
+    return query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+  }
+</code></pre><p>　　可以看到此时调用了MappedStatement的getBoundSql方法，申请创建BoundSql实例</p>
+<pre><code>public BoundSql getBoundSql(Object parameterObject) {
+  //根据参数动态生成sql对象
+  BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+  //参数队列
+  List&lt;ParameterMapping&gt; parameterMappings = boundSql.getParameterMappings();
+  if (parameterMappings == null || parameterMappings.isEmpty()) {
+    boundSql = new BoundSql(configuration, boundSql.getSql(), parameterMap.getParameterMappings(), parameterObject);
+  }
+
+  for (ParameterMapping pm : boundSql.getParameterMappings()) {
+    String rmId = pm.getResultMapId();
+    if (rmId != null) {
+      ResultMap rm = configuration.getResultMap(rmId);
+      if (rm != null) {
+        hasNestedResultMaps |= rm.hasNestedResultMaps();
+      }
+    }
+  }
+  return boundSql;
+}
+</code></pre><p>　　由于是动态sql，所以此时的sqlSource是DynamicSqlSource类型</p>
+<pre><code>public BoundSql getBoundSql(Object parameterObject) {
+    DynamicContext context = new DynamicContext(configuration, parameterObject);
+    //遍历本sql下的所有子标签（如if，forEach等），与参数进行匹配，生成最终要执行的sql。
+    rootSqlNode.apply(context);
+    //SQLSource的创建者
+    SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
+    //获取参数类型
+    Class&lt;?&gt; parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
+    //创建SQLSource实例，此处其实也是使用的StaticSqlSource
+    SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
+    BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+    //将parameterObject和DatabaseId放入boundSql中
+    for (Map.Entry&lt;String, Object&gt; entry : context.getBindings().entrySet()) {
+      boundSql.setAdditionalParameter(entry.getKey(), entry.getValue());
+    }
+    return boundSql;
+  }
+</code></pre><p>　　值得关注的是rootSqlNode.apply(context)，这个方法就是组装动态节点的入口。在上面的创建流程中有提到动态sql的节点集合是包装在MixedSqlNode中的，此处的rootSqlNode自然也就是MixedSqlNode类型</p>
+<pre><code>public boolean apply(DynamicContext context) {
+    for (SqlNode sqlNode : contents) {
+      sqlNode.apply(context);
+    }
+    return true;
+  }
+</code></pre><p>　　在apply中将集合中的参数依次取出，依次拼接。以if标签对应的IfSqlNode为例：</p>
+<pre><code>public boolean apply(DynamicContext context) {
+    if (evaluator.evaluateBoolean(test, context.getBindings())) {
+      contents.apply(context);
+      return true;
+    }
+    return false;
+  }
+</code></pre><p>　　此时便完成了sql的动态生成。</p>
+
       
     </div>
     
@@ -298,12 +538,12 @@
   
     
     <div class="copyright">
-        <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-12/">mybatis_12</a></p>
+        <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></p>
         <p><span>文章作者:</span><a  href="/" title="访问 Arthur 的个人博客">Arthur</a></p>
         <p><span>发布时间:</span>2017年06月15日 - 15时17分</p>
-        <p><span>最后更新:</span>2017年06月15日 - 15时17分</p>
+        <p><span>最后更新:</span>2017年06月15日 - 17时18分</p>
         <p>
-            <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-12/" title="mybatis_12">http://yoursite.com/2017/06/15/mybatis-12/</a>
+            <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-12/" title="MyBatis源码解析：动态SQL">http://yoursite.com/2017/06/15/mybatis-12/</a>
             <span class="copy-path" data-clipboard-text="原文: http://yoursite.com/2017/06/15/mybatis-12/　　作者: Arthur" title=""></span>
         </p>
         <p>
@@ -315,18 +555,9 @@
 
 <nav id="article-nav">
   
-    <a  href="/2017/06/15/mybatis-13/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption"><</strong>
-      <div class="article-nav-title">
-        
-          mybatis_13
-        
-      </div>
-    </a>
-  
   
     <a  href="/2017/06/15/mybatis-11/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">mybatis_11</div>
+      <div class="article-nav-title">MyBatis源码解析：Plugin</div>
       <strong class="article-nav-caption">></strong>
     </a>
   
@@ -338,7 +569,7 @@
 
     <div id="toc" class="toc-article">
     <strong class="toc-title">文章目录</strong>
-    
+    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-MyBatis中和动态SQl相关的类"><span class="toc-number">1.</span> <span class="toc-text">1. MyBatis中和动态SQl相关的类</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-BaseBuilder"><span class="toc-number">1.1.</span> <span class="toc-text">1.1. BaseBuilder</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-SqlNode"><span class="toc-number">1.2.</span> <span class="toc-text">1.2. SqlNode</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-SqlSource"><span class="toc-number">1.3.</span> <span class="toc-text">1.3. SqlSource</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-4-LanguageDriver"><span class="toc-number">1.4.</span> <span class="toc-text">1.4. LanguageDriver</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-动态Sql创建流程"><span class="toc-number">2.</span> <span class="toc-text">2. 动态Sql创建流程</span></a></li></ol>
 </div>
 <style>
     .left-col .switch-btn {
@@ -409,18 +640,16 @@
 
     <div class="scroll" id="post-nav-button">
         
-            <a  href="/2017/06/15/mybatis-13/" title="上一篇: mybatis_13">
-                <i class="fa fa-angle-left"></i>
-            </a>
+            <a  href="/" title="回到主页"><i class="fa fa-home"></i></a>
         
         <a title="文章列表"><i class="fa fa-bars"></i><i class="fa fa-times"></i></a>
         
-            <a  href="/2017/06/15/mybatis-11/" title="下一篇: mybatis_11">
+            <a  href="/2017/06/15/mybatis-11/" title="下一篇: MyBatis源码解析：Plugin">
                 <i class="fa fa-angle-right"></i>
             </a>
         
     </div>
-    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-13/">mybatis_13</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">mybatis_12</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">mybatis_11</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">mybatis_10</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">mybatis_9</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">mybatis_8</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">mybatis_7</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">mybatis_6</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">mybatis_5</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">mybatis_4</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">mybatis-2</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/13/hello-world/">Hello World</a></li></ul>
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/13/hello-world/">Hello World</a></li></ul>
     <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
     <script>
         $(".post-list").addClass("toc-article");

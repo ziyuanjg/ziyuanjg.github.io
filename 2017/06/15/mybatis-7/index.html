@@ -7,15 +7,19 @@
   
   
   
-  <title>mybatis_7 | Hexo</title>
+  <title>MyBatis源码解析：ParameterHandler | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="article">
-<meta property="og:title" content="mybatis_7">
+  <meta name="description" content="之前在Statementhandler中有一个成员变量叫ParameterHandler，这个就是第二个苦力（负责绑定参数）了，MyBatis中ParameterHandler只有一个默认实现，下面看一下绑定参数方法的源码：">
+<meta name="keywords" content="MyBatis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MyBatis源码解析：ParameterHandler">
 <meta property="og:url" content="http://yoursite.com/2017/06/15/mybatis-7/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:updated_time" content="2017-06-15T07:16:47.464Z">
+<meta property="og:description" content="之前在Statementhandler中有一个成员变量叫ParameterHandler，这个就是第二个苦力（负责绑定参数）了，MyBatis中ParameterHandler只有一个默认实现，下面看一下绑定参数方法的源码：">
+<meta property="og:updated_time" content="2017-06-15T08:53:34.497Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="mybatis_7">
+<meta name="twitter:title" content="MyBatis源码解析：ParameterHandler">
+<meta name="twitter:description" content="之前在Statementhandler中有一个成员变量叫ParameterHandler，这个就是第二个苦力（负责绑定参数）了，MyBatis中ParameterHandler只有一个默认实现，下面看一下绑定参数方法的源码：">
   
     <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
   
@@ -272,7 +276,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      mybatis_7
+      MyBatis源码解析：ParameterHandler
     </h1>
   
 
@@ -283,6 +287,10 @@
         
 
         
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
         <div class="clearfix"></div>
       </div>
       
@@ -290,7 +298,50 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+        <p>　　之前在Statementhandler中有一个成员变量叫ParameterHandler，这个就是第二个苦力（负责绑定参数）了，MyBatis中ParameterHandler只有一个默认实现，下面看一下绑定参数方法的源码：<br><a id="more"></a></p>
+<pre><code>public void setParameters(PreparedStatement ps) {
+    ErrorContext.instance().activity(&quot;setting parameters&quot;).object(mappedStatement.getParameterMap().getId());
+    //获取sql对象中的参数集合
+    List&lt;ParameterMapping&gt; parameterMappings = boundSql.getParameterMappings();
+    if (parameterMappings != null) {
+      for (int i = 0; i &lt; parameterMappings.size(); i++) {
+        //获取参数对象
+        ParameterMapping parameterMapping = parameterMappings.get(i);
+        //存储过程的输出参数在之前的CallableStatementHandler中绑定，此处不在赘述
+        if (parameterMapping.getMode() != ParameterMode.OUT) {
+          Object value;
+          String propertyName = parameterMapping.getProperty();
+          //获取需绑定参数的值
+          if (boundSql.hasAdditionalParameter(propertyName)) { 
+            value = boundSql.getAdditionalParameter(propertyName);
+          } else if (parameterObject == null) {
+            value = null;
+          } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
+            value = parameterObject;
+          } else {
+            MetaObject metaObject = configuration.newMetaObject(parameterObject);
+            value = metaObject.getValue(propertyName);
+          }
+          //获取此参数对应的类型处理器
+          TypeHandler typeHandler = parameterMapping.getTypeHandler();
+          JdbcType jdbcType = parameterMapping.getJdbcType();
+          //如果参数值和jdbc类型为null，则此参数使用配置中指定的null类型表示，默认为JdbcType.OTHER
+          if (value == null &amp;&amp; jdbcType == null) {
+            jdbcType = configuration.getJdbcTypeForNull();
+          }
+          try {
+            //将参数绑定到PreparedStatement
+            typeHandler.setParameter(ps, i + 1, value, jdbcType);
+          } catch (TypeException e) {
+            throw new TypeException(&quot;Could not set parameters for mapping: &quot; + parameterMapping + &quot;. Cause: &quot; + e, e);
+          } catch (SQLException e) {
+            throw new TypeException(&quot;Could not set parameters for mapping: &quot; + parameterMapping + &quot;. Cause: &quot; + e, e);
+          }
+        }
+      }
+    }
+  }
+</code></pre>
       
     </div>
     
@@ -298,12 +349,12 @@
   
     
     <div class="copyright">
-        <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-7/">mybatis_7</a></p>
+        <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></p>
         <p><span>文章作者:</span><a  href="/" title="访问 Arthur 的个人博客">Arthur</a></p>
         <p><span>发布时间:</span>2017年06月15日 - 15时16分</p>
-        <p><span>最后更新:</span>2017年06月15日 - 15时16分</p>
+        <p><span>最后更新:</span>2017年06月15日 - 16时53分</p>
         <p>
-            <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-7/" title="mybatis_7">http://yoursite.com/2017/06/15/mybatis-7/</a>
+            <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-7/" title="MyBatis源码解析：ParameterHandler">http://yoursite.com/2017/06/15/mybatis-7/</a>
             <span class="copy-path" data-clipboard-text="原文: http://yoursite.com/2017/06/15/mybatis-7/　　作者: Arthur" title=""></span>
         </p>
         <p>
@@ -319,14 +370,14 @@
       <strong class="article-nav-caption"><</strong>
       <div class="article-nav-title">
         
-          mybatis_8
+          MyBatis源码解析：Mybatis的缓存机制
         
       </div>
     </a>
   
   
     <a  href="/2017/06/15/mybatis-6/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">mybatis_6</div>
+      <div class="article-nav-title">MyBatis源码解析：ResultSetHandler</div>
       <strong class="article-nav-caption">></strong>
     </a>
   
@@ -409,18 +460,18 @@
 
     <div class="scroll" id="post-nav-button">
         
-            <a  href="/2017/06/15/mybatis-8/" title="上一篇: mybatis_8">
+            <a  href="/2017/06/15/mybatis-8/" title="上一篇: MyBatis源码解析：Mybatis的缓存机制">
                 <i class="fa fa-angle-left"></i>
             </a>
         
         <a title="文章列表"><i class="fa fa-bars"></i><i class="fa fa-times"></i></a>
         
-            <a  href="/2017/06/15/mybatis-6/" title="下一篇: mybatis_6">
+            <a  href="/2017/06/15/mybatis-6/" title="下一篇: MyBatis源码解析：ResultSetHandler">
                 <i class="fa fa-angle-right"></i>
             </a>
         
     </div>
-    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-13/">mybatis_13</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">mybatis_12</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">mybatis_11</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">mybatis_10</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">mybatis_9</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">mybatis_8</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">mybatis_7</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">mybatis_6</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">mybatis_5</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">mybatis_4</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">mybatis-2</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/13/hello-world/">Hello World</a></li></ul>
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/13/hello-world/">Hello World</a></li></ul>
     <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
     <script>
         $(".post-list").addClass("toc-article");

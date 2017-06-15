@@ -7,15 +7,23 @@
   
   
   
-  <title>mybatis_9 | Hexo</title>
+  <title>MyBatis源码解析：数据源和连接池 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="article">
-<meta property="og:title" content="mybatis_9">
+  <meta name="description" content="MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。 1. DataSource的三种类型MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。">
+<meta name="keywords" content="MyBatis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MyBatis源码解析：数据源和连接池">
 <meta property="og:url" content="http://yoursite.com/2017/06/15/mybatis-9/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:updated_time" content="2017-06-15T07:16:52.454Z">
+<meta property="og:description" content="MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。 1. DataSource的三种类型MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_14.png">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_15.png">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_16.png">
+<meta property="og:updated_time" content="2017-06-15T09:02:10.282Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="mybatis_9">
+<meta name="twitter:title" content="MyBatis源码解析：数据源和连接池">
+<meta name="twitter:description" content="MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。 1. DataSource的三种类型MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。">
+<meta name="twitter:image" content="http://yoursite.com/images/mybatis_14.png">
   
     <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
   
@@ -272,7 +280,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      mybatis_9
+      MyBatis源码解析：数据源和连接池
     </h1>
   
 
@@ -283,6 +291,10 @@
         
 
         
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
         <div class="clearfix"></div>
       </div>
       
@@ -290,7 +302,413 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+        <p>　　MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。</p>
+<h1 id="1-DataSource的三种类型"><a href="#1-DataSource的三种类型" class="headerlink" title="1. DataSource的三种类型"></a>1. DataSource的三种类型</h1><p>MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。<br><a id="more"></a></p>
+<h1 id="2-DataSource的创建过程"><a href="#2-DataSource的创建过程" class="headerlink" title="2. DataSource的创建过程"></a>2. DataSource的创建过程</h1><p><img src="/images/mybatis_14.png" alt=""></p>
+<h2 id="2-1-在config-xml中配置environments标签"><a href="#2-1-在config-xml中配置environments标签" class="headerlink" title="2.1. 在config.xml中配置environments标签"></a>2.1. 在config.xml中配置environments标签</h2><pre><code>&lt;environments default=&quot;development1&quot;&gt;
+     &lt;environment id=&quot;development1&quot;&gt;
+         &lt;transactionManager type=&quot;JDBC&quot;&gt;&lt;/transactionManager&gt;
+         &lt;dataSource type=&quot;UNPOOLED&quot;&gt;
+             &lt;property name=&quot;driver&quot; value=&quot;${driver1}&quot;/&gt;
+            &lt;property name=&quot;url&quot; value=&quot;${url1}&quot;/&gt;
+            &lt;property name=&quot;username&quot; value=&quot;${username1}&quot;/&gt;
+            &lt;property name=&quot;password&quot; value=&quot;${password1}&quot;/&gt;
+         &lt;/dataSource&gt;
+     &lt;/environment&gt;
+&lt;/environments&gt;
+</code></pre><h2 id="2-2-创建SqlSessionFactory"><a href="#2-2-创建SqlSessionFactory" class="headerlink" title="2.2. 创建SqlSessionFactory"></a>2.2. 创建SqlSessionFactory</h2><pre><code>SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(is,&quot;development1&quot;);
+</code></pre><h2 id="2-3-构造Configuration实例"><a href="#2-3-构造Configuration实例" class="headerlink" title="2.3. 构造Configuration实例"></a>2.3. 构造Configuration实例</h2><pre><code>public Configuration parse() {
+    if (parsed) {
+      throw new BuilderException(&quot;Each XMLConfigBuilder can only be used once.&quot;);
+    }
+    parsed = true;
+    //获取config.xml配置文件中的内容，进行组装
+    parseConfiguration(parser.evalNode(&quot;/configuration&quot;));
+    return configuration;
+  }
+</code></pre><h2 id="2-4-读取environments标签"><a href="#2-4-读取environments标签" class="headerlink" title="2.4. 读取environments标签"></a>2.4. 读取environments标签</h2><pre><code>private void environmentsElement(XNode context) throws Exception {
+    if (context != null) {
+      //如果构建SqlSessionFactory时传入了environment参数，则使用指定数据源，否则使用配置的默认数据源
+      if (environment == null) {
+        environment = context.getStringAttribute(&quot;default&quot;);
+      }
+      //遍历所有配置的environment数据，搜索id与指定数据源匹配的元素
+      for (XNode child : context.getChildren()) {
+        String id = child.getStringAttribute(&quot;id&quot;);
+        if (isSpecifiedEnvironment(id)) {
+          //事务管理器工厂
+          TransactionFactory txFactory = transactionManagerElement(child.evalNode(&quot;transactionManager&quot;));
+          //数据源工厂
+          DataSourceFactory dsFactory = dataSourceElement(child.evalNode(&quot;dataSource&quot;));
+          DataSource dataSource = dsFactory.getDataSource();
+          //数据交互环境构造器
+          Environment.Builder environmentBuilder = new Environment.Builder(id)
+              .transactionFactory(txFactory)
+              .dataSource(dataSource);
+          //将数据源放入configuration上下文中
+          configuration.setEnvironment(environmentBuilder.build());
+        }
+      }
+    }
+  }
+</code></pre><h1 id="3-不使用连接池的DataSource"><a href="#3-不使用连接池的DataSource" class="headerlink" title="3. 不使用连接池的DataSource"></a>3. 不使用连接池的DataSource</h1><p><img src="/images/mybatis_15.png" alt=""></p>
+<p>UnpooledDataSource相对PooledDataSource简单一点，每次调用都创建一个数据库连接，执行之后连接即可销毁。相关类主要有以下两个</p>
+<h2 id="3-1-UnpooledDataSourceFactory"><a href="#3-1-UnpooledDataSourceFactory" class="headerlink" title="3.1. UnpooledDataSourceFactory"></a>3.1. UnpooledDataSourceFactory</h2><p>只有两个方法setProperties和getDataSource，一个设置数据源参数，一个获取数据源。</p>
+<h2 id="3-2-UnpooledDataSource"><a href="#3-2-UnpooledDataSource" class="headerlink" title="3.2. UnpooledDataSource"></a>3.2. UnpooledDataSource</h2><p>既然是数据源，那最重要也就是获取数据库连接的方法了，下面看下获取数据库连接的方法：</p>
+<pre><code>private Connection doGetConnection(Properties properties) throws SQLException {
+    //初始化数据库驱动，如果environment中的driver属性配置的数据库驱动没有初始化，则会通过反射加载指定驱动
+    initializeDriver();
+    //获取数据库连接
+    Connection connection = DriverManager.getConnection(url, properties);
+    //配置连接是否自动提交，隔离等级
+    configureConnection(connection);
+    return connection;
+  }
+</code></pre><h1 id="4-使用连接池的DataSource"><a href="#4-使用连接池的DataSource" class="headerlink" title="4. 使用连接池的DataSource"></a>4. 使用连接池的DataSource</h1><p><img src="/images/mybatis_16.png" alt=""></p>
+<p>　　PooledDataSource从源码角度来看实际是在UnpooledDataSource架子上做了一些扩展，在PooledDataSource维护了一个UnpooledDataSource实例，获取数据库连接的依然是UnpooledDataSource的那一套方法，不过既然要使用连接池自然不会如此简单，这就涉及到了PoolState和PooledConnection这两个类。</p>
+<h2 id="4-1-PoolState"><a href="#4-1-PoolState" class="headerlink" title="4.1. PoolState"></a>4.1. PoolState</h2><p>PoolState是连接池的状态上下文，内部维护了很多运行时的状态数据，其中只有两个参与了连接池的操作，(空闲连接队列)idleConnections和(活跃连接队列)activeConnections。</p>
+<h2 id="4-2-PooledConnection"><a href="#4-2-PooledConnection" class="headerlink" title="4.2. PooledConnection"></a>4.2. PooledConnection</h2><p>数据库连接的代理类，说到代理类，那自然就有invoke方法了：</p>
+<pre><code>public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    String methodName = method.getName();
+    //当执行close方法时，不会真的关闭连接，会根据连接池的状态决定如何处理
+    if (CLOSE.hashCode() == methodName.hashCode() &amp;&amp; CLOSE.equals(methodName)) {
+      dataSource.pushConnection(this);
+      return null;
+    } else {
+      try {
+        if (!Object.class.equals(method.getDeclaringClass())) {
+          //检查连接是否可用
+          checkConnection();
+        }
+        return method.invoke(realConnection, args);
+      } catch (Throwable t) {
+        throw ExceptionUtil.unwrapThrowable(t);
+      }
+    }
+  }
+</code></pre><p>有上面源码可知，其实代理主要是为了处理close方法，毕竟连接池中的连接是需要重用的，不然岂不是和不用连接池一样了。</p>
+<h2 id="4-3-PooledDataSource"><a href="#4-3-PooledDataSource" class="headerlink" title="4.3. PooledDataSource"></a>4.3. PooledDataSource</h2><pre><code>//连接池状态上下文
+private final PoolState state = new PoolState(this);
+//实际获取数据库连接的数据源
+private final UnpooledDataSource dataSource;
+//最大活跃连接数
+protected int poolMaximumActiveConnections = 10;
+//最大空闲连接数
+protected int poolMaximumIdleConnections = 5;
+//如果一次调用超过此时间，则会强制结束调用
+protected int poolMaximumCheckoutTime = 20000;
+//再次尝试连接的等待时间
+protected int poolTimeToWait = 20000;
+//心跳检测
+protected String poolPingQuery = &quot;NO PING QUERY SET&quot;;
+//是否使用心跳检测
+protected boolean poolPingEnabled;
+//如果一个连接超过此时间没有被使用，尝试ping这个数据源查看是否可用
+protected int poolPingConnectionsNotUsedFor;
+//连接的唯一code码
+private int expectedConnectionTypeCode;
+
+/**
+ * 强制关闭所有连接，修改连接池参数或数据源参数时调用
+ */
+public void forceCloseAll() {
+  //因为活跃连接和空闲连接的集合是在PoolState中维护，所以强制关闭时需要锁定state
+  synchronized (state) {
+    //强制关闭所有连接的触发点包括更改数据源信息，所以此处要重新赋值code
+    expectedConnectionTypeCode = assembleConnectionTypeCode(dataSource.getUrl(), dataSource.getUsername(), dataSource.getPassword());
+    //关闭所有活跃连接
+    for (int i = state.activeConnections.size(); i &gt; 0; i--) {
+      try {
+        PooledConnection conn = state.activeConnections.remove(i - 1);
+        //连接状态修改为不可用
+        conn.invalidate();
+        //因为PooledConnection实际上是Connection的代理类，所以关闭的时候需要获取JDBC的连接进行关闭。
+        Connection realConn = conn.getRealConnection();
+        if (!realConn.getAutoCommit()) {
+          realConn.rollback();
+        }
+        realConn.close();
+      } catch (Exception e) {
+      }
+    }
+    //关闭所有空闲连接
+    for (int i = state.idleConnections.size(); i &gt; 0; i--) {
+      try {
+        PooledConnection conn = state.idleConnections.remove(i - 1);
+        //连接状态修改为不可用
+        conn.invalidate();
+        //因为PooledConnection实际上是Connection的代理类，所以关闭的时候需要获取JDBC的连接进行关闭。
+        Connection realConn = conn.getRealConnection();
+        if (!realConn.getAutoCommit()) {
+          realConn.rollback();
+        }
+        realConn.close();
+      } catch (Exception e) {
+      }
+    }
+  }
+  if (log.isDebugEnabled()) {
+    log.debug(&quot;PooledDataSource forcefully closed/removed all connections.&quot;);
+  }
+}
+</code></pre><p>通常情况下，当我们使用完一个连接时，会调用close方法释放连接，避免影响性能，连接池中的连接代理实例调用close方法时实际上不会简单的释放掉连接，而是调用pushConnection方法将连接放入空闲队列，等待下次调用。</p>
+<pre><code>  protected void pushConnection(PooledConnection conn) throws SQLException {
+    synchronized (state) {
+      //从活跃连接队列中清除
+      state.activeConnections.remove(conn);
+      //连接是可用状态
+      if (conn.isValid()) {
+        //当前空闲连接数小于设置的最大空闲连接数且此连接的数据源与连接池相同
+        if (state.idleConnections.size() &lt; poolMaximumIdleConnections &amp;&amp; conn.getConnectionTypeCode() == expectedConnectionTypeCode) {
+          state.accumulatedCheckoutTime += conn.getCheckoutTime();
+          //如果连接设置手动提交，则回滚修改的内容，防止强制关闭引起数据错误
+          if (!conn.getRealConnection().getAutoCommit()) {
+            conn.getRealConnection().rollback();
+          }
+          //创建新的代理类，并放入空闲连接队列
+          PooledConnection newConn = new PooledConnection(conn.getRealConnection(), this);
+          state.idleConnections.add(newConn);
+          newConn.setCreatedTimestamp(conn.getCreatedTimestamp());
+          newConn.setLastUsedTimestamp(conn.getLastUsedTimestamp());
+          //废弃连接代理设置为不可用
+          conn.invalidate();
+          if (log.isDebugEnabled()) {
+            log.debug(&quot;Returned connection &quot; + newConn.getRealHashCode() + &quot; to pool.&quot;);
+          }
+          state.notifyAll();
+        } else {
+          state.accumulatedCheckoutTime += conn.getCheckoutTime();
+          //如果连接设置手动提交，则回滚修改的内容，防止强制关闭引起数据错误
+          if (!conn.getRealConnection().getAutoCommit()) {
+            conn.getRealConnection().rollback();
+          }
+          //关闭连接
+          conn.getRealConnection().close();
+          if (log.isDebugEnabled()) {
+            log.debug(&quot;Closed connection &quot; + conn.getRealHashCode() + &quot;.&quot;);
+          }
+          //废弃连接代理设置为不可用
+          conn.invalidate();
+        }
+      } else {
+        if (log.isDebugEnabled()) {
+          log.debug(&quot;A bad connection (&quot; + conn.getRealHashCode() + &quot;) attempted to return to the pool, discarding connection.&quot;);
+        }
+        state.badConnectionCount++;
+      }
+    }
+  }
+
+/**
+   * 获取连接
+   */
+  private PooledConnection popConnection(String username, String password) throws SQLException {
+    boolean countedWait = false;
+    PooledConnection conn = null;
+    long t = System.currentTimeMillis();
+    int localBadConnectionCount = 0;
+
+    while (conn == null) {
+      synchronized (state) {
+        if (!state.idleConnections.isEmpty()) {
+          //存在空闲连接时，取队列中的第一个空闲连接
+          conn = state.idleConnections.remove(0);
+          if (log.isDebugEnabled()) {
+            log.debug(&quot;Checked out connection &quot; + conn.getRealHashCode() + &quot; from pool.&quot;);
+          }
+        } else {
+          //连接池中不存在空闲连接时
+          //当连接池中的活跃连接小于最大的活跃连接数时
+          if (state.activeConnections.size() &lt; poolMaximumActiveConnections) {
+            //创建新的连接代理实例
+            conn = new PooledConnection(dataSource.getConnection(), this);
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;Created connection &quot; + conn.getRealHashCode() + &quot;.&quot;);
+            }
+          } else {
+            //当连接池中的活跃连接达到阈值时，不能创建新连接
+            //获取活跃连接队列中执行时间最长的实例（FIFO）
+            PooledConnection oldestActiveConnection = state.activeConnections.get(0);
+            long longestCheckoutTime = oldestActiveConnection.getCheckoutTime();
+            if (longestCheckoutTime &gt; poolMaximumCheckoutTime) {
+              //此连接的checkout时间已经超过了设置的最长checkout时间，此时可以将此连接当前操作作废，移出活跃队列
+              state.claimedOverdueConnectionCount++;
+              state.accumulatedCheckoutTimeOfOverdueConnections += longestCheckoutTime;
+              state.accumulatedCheckoutTime += longestCheckoutTime;
+              state.activeConnections.remove(oldestActiveConnection);
+              //将连接当前操作回滚，防止数据错误
+              if (!oldestActiveConnection.getRealConnection().getAutoCommit()) {
+                try {
+                  oldestActiveConnection.getRealConnection().rollback();
+                } catch (SQLException e) {
+                  log.debug(&quot;Bad connection. Could not roll back&quot;);
+                }  
+              }
+              //创建新的连接代理实例
+              conn = new PooledConnection(oldestActiveConnection.getRealConnection(), this);
+              conn.setCreatedTimestamp(oldestActiveConnection.getCreatedTimestamp());
+              conn.setLastUsedTimestamp(oldestActiveConnection.getLastUsedTimestamp());
+              //修改旧代理类为不可用
+              oldestActiveConnection.invalidate();
+              if (log.isDebugEnabled()) {
+                log.debug(&quot;Claimed overdue connection &quot; + conn.getRealHashCode() + &quot;.&quot;);
+              }
+            } else {
+              //当不能创建新连接，活跃连接中也没有超过过期时间的连接时，只能等待了=。=
+              try {
+                if (!countedWait) {
+                  state.hadToWaitCount++;
+                  countedWait = true;
+                }
+                if (log.isDebugEnabled()) {
+                  log.debug(&quot;Waiting as long as &quot; + poolTimeToWait + &quot; milliseconds for connection.&quot;);
+                }
+                long wt = System.currentTimeMillis();
+                //默认的等待时间和连接过期时间一样是20s，所以如果不做修改的话，20s之后必然会有连接可用，如果短时间内爆发超过处理能力数倍的并发请求的话，就不是能在这里处理的了
+                state.wait(poolTimeToWait);
+                state.accumulatedWaitTime += System.currentTimeMillis() - wt;
+              } catch (InterruptedException e) {
+                break;
+              }
+            }
+          }
+        }
+        if (conn != null) {
+          if (conn.isValid()) {
+            //当获取的连接可用时，首先将连接rollback，防止有未提交操作
+            if (!conn.getRealConnection().getAutoCommit()) {
+              conn.getRealConnection().rollback();
+            }
+            conn.setConnectionTypeCode(assembleConnectionTypeCode(dataSource.getUrl(), username, password));
+            conn.setCheckoutTimestamp(System.currentTimeMillis());
+            conn.setLastUsedTimestamp(System.currentTimeMillis());
+            //将连接放入活跃队列
+            state.activeConnections.add(conn);
+            state.requestCount++;
+            state.accumulatedRequestTime += System.currentTimeMillis() - t;
+          } else {
+            //当获取的连接不可用时，增加一个损坏连接数，如果损坏连接数达到阈值，则抛出异常
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;A bad connection (&quot; + conn.getRealHashCode() + &quot;) was returned from the pool, getting another connection.&quot;);
+            }
+            state.badConnectionCount++;
+            localBadConnectionCount++;
+            conn = null;
+            if (localBadConnectionCount &gt; (poolMaximumIdleConnections + 3)) {
+              if (log.isDebugEnabled()) {
+                log.debug(&quot;PooledDataSource: Could not get a good connection to the database.&quot;);
+              }
+              throw new SQLException(&quot;PooledDataSource: Could not get a good connection to the database.&quot;);
+            }
+          }
+        }
+      }
+    }
+
+    if (conn == null) {
+      if (log.isDebugEnabled()) {
+        log.debug(&quot;PooledDataSource: Unknown severe error condition.  The connection pool returned a null connection.&quot;);
+      }
+      throw new SQLException(&quot;PooledDataSource: Unknown severe error condition.  The connection pool returned a null connection.&quot;);
+    }
+
+    return conn;
+  }
+
+/**
+   * 检查连接是否可用
+   * @param conn - the connection to check
+   * @return True if the connection is still usable
+   */
+  protected boolean pingConnection(PooledConnection conn) {
+    boolean result = true;
+
+    try {
+      //1、校验连接是否已关闭
+      result = !conn.getRealConnection().isClosed();
+    } catch (SQLException e) {
+      if (log.isDebugEnabled()) {
+        log.debug(&quot;Connection &quot; + conn.getRealHashCode() + &quot; is BAD: &quot; + e.getMessage());
+      }
+      result = false;
+    }
+
+    if (result) {
+      //开启心跳测试
+      if (poolPingEnabled) {
+        //连接的空闲时间超过心跳测试的触发时间
+        if (poolPingConnectionsNotUsedFor &gt;= 0 &amp;&amp; conn.getTimeElapsedSinceLastUse() &gt; poolPingConnectionsNotUsedFor) {
+          try {
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;Testing connection &quot; + conn.getRealHashCode() + &quot; ...&quot;);
+            }
+            //尝试执行心跳测试
+            Connection realConn = conn.getRealConnection();
+            Statement statement = realConn.createStatement();
+            ResultSet rs = statement.executeQuery(poolPingQuery);
+            rs.close();
+            statement.close();
+            if (!realConn.getAutoCommit()) {
+              realConn.rollback();
+            }
+            result = true;
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;Connection &quot; + conn.getRealHashCode() + &quot; is GOOD!&quot;);
+            }
+          } catch (Exception e) {
+            log.warn(&quot;Execution of ping query &apos;&quot; + poolPingQuery + &quot;&apos; failed: &quot; + e.getMessage());
+            try {
+              conn.getRealConnection().close();
+            } catch (Exception e2) {
+            }
+            result = false;
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;Connection &quot; + conn.getRealHashCode() + &quot; is BAD: &quot; + e.getMessage());
+            }
+          }
+        }
+      }
+    }
+    return result;
+  }
+</code></pre><h1 id="5-使用连接池有什么好处"><a href="#5-使用连接池有什么好处" class="headerlink" title="5. 使用连接池有什么好处"></a>5. 使用连接池有什么好处</h1><p>　　首先我们来看一下创建连接的性能消耗。</p>
+<pre><code>try {
+    Class.forName(&quot;com.mysql.jdbc.Driver&quot;);
+    String url = &quot;jdbc:mysql://192.168.1.39:3306/dlb&quot;;
+    long createConnectionTime = System.currentTimeMillis();
+    Connection conn = DriverManager.getConnection(url,&quot;ymt&quot;,&quot;yimiaotong2015&quot;);
+    System.out.println(&quot;创建连接消耗的时间：&quot;+(System.currentTimeMillis() - createConnectionTime));
+
+    long executeTime = System.currentTimeMillis();
+    PreparedStatement ps = conn.prepareStatement(&quot;select phoneNO from users where id = 1&quot;);
+    ResultSet rs = ps.executeQuery();
+    System.out.println(&quot;执行sql消耗时间：&quot;+(System.currentTimeMillis() - executeTime));
+
+} catch (ClassNotFoundException e) {
+    e.printStackTrace();
+} catch (SQLException e) {
+    e.printStackTrace();
+}
+
+![](/images/mybatis_17.png)
+</code></pre><p>创建一个连接需要178ms，如果请求量上来了，那画面太美。恰巧还是一个“不谙世事”的程序员，天天追着老板买新服务器，估计老板砍死你的心都有了。笑<br>连接池中的连接在执行sql操作之后不会进行close，而是调用pushConnection进行调度，将连接在活跃和空闲队列中来回流转，等待执行任务，这样就节约了每次都要创建连接的开销。</p>
+<h1 id="6-何时创建Connection"><a href="#6-何时创建Connection" class="headerlink" title="6. 何时创建Connection"></a>6. 何时创建Connection</h1><p>　　当我们需要执行一个sql语句时，Executor会调用getConnection方法创建一个Connection。</p>
+<pre><code>protected Connection getConnection(Log statementLog) throws SQLException {
+    Connection connection = transaction.getConnection();
+    if (statementLog.isDebugEnabled()) {
+      return ConnectionLogger.newInstance(connection, statementLog, queryStack);
+    } else {
+      return connection;
+    }
+  }
+public Connection getConnection() throws SQLException {
+    if (connection == null) {
+      openConnection();
+    }
+    return connection;
+  }
+</code></pre><h1 id="7-JNDI类型DataSource"><a href="#7-JNDI类型DataSource" class="headerlink" title="7. JNDI类型DataSource"></a>7. JNDI类型DataSource</h1><p>　　MyBatis定义了一个JndiDataSourceFactory来创建JDNI形式的数据源，具体配置参考各容器的文档。</p>
+
       
     </div>
     
@@ -298,12 +716,12 @@
   
     
     <div class="copyright">
-        <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-9/">mybatis_9</a></p>
+        <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></p>
         <p><span>文章作者:</span><a  href="/" title="访问 Arthur 的个人博客">Arthur</a></p>
         <p><span>发布时间:</span>2017年06月15日 - 15时16分</p>
-        <p><span>最后更新:</span>2017年06月15日 - 15时16分</p>
+        <p><span>最后更新:</span>2017年06月15日 - 17时02分</p>
         <p>
-            <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-9/" title="mybatis_9">http://yoursite.com/2017/06/15/mybatis-9/</a>
+            <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-9/" title="MyBatis源码解析：数据源和连接池">http://yoursite.com/2017/06/15/mybatis-9/</a>
             <span class="copy-path" data-clipboard-text="原文: http://yoursite.com/2017/06/15/mybatis-9/　　作者: Arthur" title=""></span>
         </p>
         <p>
@@ -319,14 +737,14 @@
       <strong class="article-nav-caption"><</strong>
       <div class="article-nav-title">
         
-          mybatis_10
+          MyBatis源码解析：MetaObject
         
       </div>
     </a>
   
   
     <a  href="/2017/06/15/mybatis-8/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">mybatis_8</div>
+      <div class="article-nav-title">MyBatis源码解析：Mybatis的缓存机制</div>
       <strong class="article-nav-caption">></strong>
     </a>
   
@@ -338,7 +756,7 @@
 
     <div id="toc" class="toc-article">
     <strong class="toc-title">文章目录</strong>
-    
+    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-DataSource的三种类型"><span class="toc-number">1.</span> <span class="toc-text">1. DataSource的三种类型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-DataSource的创建过程"><span class="toc-number">2.</span> <span class="toc-text">2. DataSource的创建过程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-在config-xml中配置environments标签"><span class="toc-number">2.1.</span> <span class="toc-text">2.1. 在config.xml中配置environments标签</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-创建SqlSessionFactory"><span class="toc-number">2.2.</span> <span class="toc-text">2.2. 创建SqlSessionFactory</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-3-构造Configuration实例"><span class="toc-number">2.3.</span> <span class="toc-text">2.3. 构造Configuration实例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-4-读取environments标签"><span class="toc-number">2.4.</span> <span class="toc-text">2.4. 读取environments标签</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-不使用连接池的DataSource"><span class="toc-number">3.</span> <span class="toc-text">3. 不使用连接池的DataSource</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-UnpooledDataSourceFactory"><span class="toc-number">3.1.</span> <span class="toc-text">3.1. UnpooledDataSourceFactory</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-UnpooledDataSource"><span class="toc-number">3.2.</span> <span class="toc-text">3.2. UnpooledDataSource</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-使用连接池的DataSource"><span class="toc-number">4.</span> <span class="toc-text">4. 使用连接池的DataSource</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-PoolState"><span class="toc-number">4.1.</span> <span class="toc-text">4.1. PoolState</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-PooledConnection"><span class="toc-number">4.2.</span> <span class="toc-text">4.2. PooledConnection</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-3-PooledDataSource"><span class="toc-number">4.3.</span> <span class="toc-text">4.3. PooledDataSource</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-使用连接池有什么好处"><span class="toc-number">5.</span> <span class="toc-text">5. 使用连接池有什么好处</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#6-何时创建Connection"><span class="toc-number">6.</span> <span class="toc-text">6. 何时创建Connection</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#7-JNDI类型DataSource"><span class="toc-number">7.</span> <span class="toc-text">7. JNDI类型DataSource</span></a></li></ol>
 </div>
 <style>
     .left-col .switch-btn {
@@ -409,18 +827,18 @@
 
     <div class="scroll" id="post-nav-button">
         
-            <a  href="/2017/06/15/mybatis-10/" title="上一篇: mybatis_10">
+            <a  href="/2017/06/15/mybatis-10/" title="上一篇: MyBatis源码解析：MetaObject">
                 <i class="fa fa-angle-left"></i>
             </a>
         
         <a title="文章列表"><i class="fa fa-bars"></i><i class="fa fa-times"></i></a>
         
-            <a  href="/2017/06/15/mybatis-8/" title="下一篇: mybatis_8">
+            <a  href="/2017/06/15/mybatis-8/" title="下一篇: MyBatis源码解析：Mybatis的缓存机制">
                 <i class="fa fa-angle-right"></i>
             </a>
         
     </div>
-    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-13/">mybatis_13</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">mybatis_12</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">mybatis_11</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">mybatis_10</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">mybatis_9</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">mybatis_8</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">mybatis_7</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">mybatis_6</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">mybatis_5</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">mybatis_4</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">mybatis-2</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/13/hello-world/">Hello World</a></li></ul>
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/13/hello-world/">Hello World</a></li></ul>
     <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
     <script>
         $(".post-list").addClass("toc-article");

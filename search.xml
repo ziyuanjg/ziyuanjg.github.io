@@ -3,82 +3,2212 @@
   
     
     <entry>
-      <title><![CDATA[mybatis_13]]></title>
-      <url>/2017/06/15/mybatis-13/</url>
-      <content type="html"></content>
-      
-        
-    </entry>
-    
-    <entry>
-      <title><![CDATA[mybatis_12]]></title>
+      <title><![CDATA[MyBatis源码解析：动态SQL]]></title>
       <url>/2017/06/15/mybatis-12/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<h1 id="1-MyBatis中和动态SQl相关的类"><a href="#1-MyBatis中和动态SQl相关的类" class="headerlink" title="1. MyBatis中和动态SQl相关的类"></a>1. MyBatis中和动态SQl相关的类</h1><h2 id="1-1-BaseBuilder"><a href="#1-1-BaseBuilder" class="headerlink" title="1.1. BaseBuilder"></a>1.1. BaseBuilder</h2><p><img src="/images/mybatis_24.png" alt=""><br><a id="more"></a></p>
+<p>BaseBuilder主要负责解析xml配置文件，以及构建各种相关的实例：</p>
+<ul>
+<li>XMLConfigBuilder：解析全局xml配置文件</li>
+<li>XMLMapperBuilder：解析mapper节点配置</li>
+<li>XMLStatementBuilder：解析CRUD节点配置</li>
+<li>XMLScriptBuilder：解析节点中的sql</li>
+<li>MapperBuilderAssistant：辅助构建工具类</li>
+<li>SqlSourceBuilder：sql源构建类</li>
+</ul>
+<h2 id="1-2-SqlNode"><a href="#1-2-SqlNode" class="headerlink" title="1.2. SqlNode"></a>1.2. SqlNode</h2><p><img src="/images/mybatis_25.png" alt=""></p>
+<p>SqlNode对应的就是动态sql的各种标签了：</p>
+<ul>
+<li>ChooseSqlNode：对应choose标签，类似于switch功能</li>
+<li>ForEachSqlNode：对应forEach标签</li>
+<li>IfSqlNode：对应if标签和when标签</li>
+<li>MixedSqlNode：SqlNode集合类，内部维护了一个SqlNode集合，储存一个Statement中的所有动态sql节点元素</li>
+<li>StaticTextSqlNode：静态sql节点</li>
+<li>TextSqlNode：文本型节点的默认类型</li>
+<li>TrimSqlNode：过滤sql前后缀，支持set和where类型</li>
+<li>SetSqlNode：TrimSqlNode的set调用</li>
+<li>WhereSqlNode：TrimSqlNode的where调用</li>
+<li>VarDeclSqlNode：对应bind标签，用于解析Ognl表达式</li>
+</ul>
+<h2 id="1-3-SqlSource"><a href="#1-3-SqlSource" class="headerlink" title="1.3. SqlSource"></a>1.3. SqlSource</h2><p><img src="/images/mybatis_26.png" alt=""><br>SqlSource是处理xml配置文件中的sql部分的工具：</p>
+<ul>
+<li>DynamicSqlSource：创建动态sqlSourse</li>
+<li>ProviderSqlSource：处理通用mapper</li>
+<li>RawSqlSource：处理静态sql</li>
+<li>StaticSqlSource：创建静态sqlSourse</li>
+</ul>
+<h2 id="1-4-LanguageDriver"><a href="#1-4-LanguageDriver" class="headerlink" title="1.4. LanguageDriver"></a>1.4. LanguageDriver</h2><p>　　LanguageDriver主要实现类是XMLLanguageDriver，XMLLanguageDriver内部使用XMLScriptBuilder解析sql节点，用于生成SqlSource。</p>
+<h1 id="2-动态Sql创建流程"><a href="#2-动态Sql创建流程" class="headerlink" title="2. 动态Sql创建流程"></a>2. 动态Sql创建流程</h1><p><img src="/images/mybatis_26.png" alt=""></p>
+<p>　　mapper的路径既然是在全局xml中配置的，那么入口自然也要落在创建运行环境上下文中</p>
+<pre><code>private void parseConfiguration(XNode root) {
+    try {
+     //TODO
+//此处进入解析mappers节点流程
+      mapperElement(root.evalNode(&quot;mappers&quot;));
+    } catch (Exception e) {
+      throw new BuilderException(&quot;Error parsing SQL Mapper Configuration. Cause: &quot; + e, e);
+    }
+  }
+private void mapperElement(XNode parent) throws Exception {
+    if (parent != null) {
+      for (XNode child : parent.getChildren()) {
+        if (&quot;package&quot;.equals(child.getName())) {
+          //如果配置的是package，会遍历包下所有的mapper进行注册
+          String mapperPackage = child.getStringAttribute(&quot;name&quot;);
+          configuration.addMappers(mapperPackage);
+        } else {
+          //三种配置方式由县级为Resource&gt;url&gt;class
+          String resource = child.getStringAttribute(&quot;resource&quot;);
+          String url = child.getStringAttribute(&quot;url&quot;);
+          String mapperClass = child.getStringAttribute(&quot;class&quot;);
+          if (resource != null &amp;&amp; url == null &amp;&amp; mapperClass == null) {
+            ErrorContext.instance().resource(resource);
+            InputStream inputStream = Resources.getResourceAsStream(resource);
+            XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
+            //处理内部mapper节点
+            mapperParser.parse();
+          } else if (resource == null &amp;&amp; url != null &amp;&amp; mapperClass == null) {
+            ErrorContext.instance().resource(url);
+            InputStream inputStream = Resources.getUrlAsStream(url);
+            XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, url, configuration.getSqlFragments());
+            mapperParser.parse();
+          } else if (resource == null &amp;&amp; url == null &amp;&amp; mapperClass != null) {
+            Class&lt;?&gt; mapperInterface = Resources.classForName(mapperClass);
+            configuration.addMapper(mapperInterface);
+          } else {
+            throw new BuilderException(&quot;A mapper element may only specify a url, resource or class, but not more than one.&quot;);
+          }
+        }
+      }
+    }
+  }
+</code></pre><p>　　下面就进入了XMLMapperBuilder中：</p>
+<pre><code>public void parse() {
+    if (!configuration.isResourceLoaded(resource)) {
+      //避免重复加载同一mapper
+      //解析mapper节点
+      configurationElement(parser.evalNode(&quot;/mapper&quot;));
+      //在缓存中添加mapper标识，避免重复加载
+      configuration.addLoadedResource(resource);
+      //绑定命名空间
+      bindMapperForNamespace();
+    }
+
+    parsePendingResultMaps();
+    parsePendingChacheRefs();
+    parsePendingStatements();
+  }
+
+private void configurationElement(XNode context) {
+    try {
+      String namespace = context.getStringAttribute(&quot;namespace&quot;);
+      if (namespace == null || namespace.equals(&quot;&quot;)) {
+        throw new BuilderException(&quot;Mapper&apos;s namespace cannot be empty&quot;);
+      }
+      builderAssistant.setCurrentNamespace(namespace);
+      //处理缓存标签，cache会覆盖cache-ref
+      cacheRefElement(context.evalNode(&quot;cache-ref&quot;));
+      cacheElement(context.evalNode(&quot;cache&quot;));
+      //已废弃，不推荐使用
+      parameterMapElement(context.evalNodes(&quot;/mapper/parameterMap&quot;));
+      //处理外部resultMap引用
+      resultMapElements(context.evalNodes(&quot;/mapper/resultMap&quot;));
+      //处理sql片段
+      sqlElement(context.evalNodes(&quot;/mapper/sql&quot;));
+      //处理CRUD，也是动态sql的关键
+      buildStatementFromContext(context.evalNodes(&quot;select|insert|update|delete&quot;));
+    } catch (Exception e) {
+      throw new BuilderException(&quot;Error parsing Mapper XML. Cause: &quot; + e, e);
+    }
+  }
+
+  private void buildStatementFromContext(List&lt;XNode&gt; list) {
+    if (configuration.getDatabaseId() != null) {
+      buildStatementFromContext(list, configuration.getDatabaseId());
+    }
+    buildStatementFromContext(list, null);
+  }
+
+  private void buildStatementFromContext(List&lt;XNode&gt; list, String requiredDatabaseId) {
+    for (XNode context : list) {
+      final XMLStatementBuilder statementParser = new XMLStatementBuilder(configuration, builderAssistant, context, requiredDatabaseId);
+      try {
+        statementParser.parseStatementNode();
+      } catch (IncompleteElementException e) {
+        configuration.addIncompleteStatement(statementParser);
+      }
+    }
+  }
+</code></pre><p>　　接下来进入XMLStatementBuilder 处理具体sql内容：</p>
+<pre><code>public void parseStatementNode() {
+    //.....
+    LanguageDriver langDriver = getLanguageDriver(lang);
+    //.....
+    //创建sql源
+    SqlSource sqlSource = langDriver.createSqlSource(configuration, context, parameterTypeClass);
+    //.......
+  }
+</code></pre><p>　　由于是动态sql，所以下面进入XMLLanguageDriver实现：</p>
+<pre><code>public SqlSource createSqlSource(Configuration configuration, XNode script, Class&lt;?&gt; parameterType) {
+    XMLScriptBuilder builder = new XMLScriptBuilder(configuration, script, parameterType);
+    return builder.parseScriptNode();
+  }
+</code></pre><p>　　XMLLanguageDriver很懒，立即将任务转给了XMLScriptBuilder：</p>
+<pre><code>public SqlSource parseScriptNode() {
+    //遍历sql中的所有节点，判断是动态sql还是静态sql
+    List&lt;SqlNode&gt; contents = parseDynamicTags(context);
+    //MixedSqlNode表示sql节点集合
+    MixedSqlNode rootSqlNode = new MixedSqlNode(contents);
+    SqlSource sqlSource = null;
+    if (isDynamic) {
+      //动态sql
+      sqlSource = new DynamicSqlSource(configuration, rootSqlNode);
+    } else {
+      //静态sql
+      sqlSource = new RawSqlSource(configuration, rootSqlNode, parameterType);
+    }
+    return sqlSource;
+  }
+</code></pre><p>　　至此就完成了mapper配置文件的读取注册流程。</p>
+<p>3、通过sql模板生成动态sql流程<br><img src="/images/mybatis_28.png" alt=""></p>
+<p>　　既然是动态sql，那自然是运行时才会根据参数生成执行sql了，下面以query为例，简析生成动态sql的流程：<br>　　首先在CachingExecutor中调用query</p>
+<pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+    BoundSql boundSql = ms.getBoundSql(parameterObject);
+    CacheKey key = createCacheKey(ms, parameterObject, rowBounds, boundSql);
+    return query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+  }
+</code></pre><p>　　可以看到此时调用了MappedStatement的getBoundSql方法，申请创建BoundSql实例</p>
+<pre><code>public BoundSql getBoundSql(Object parameterObject) {
+  //根据参数动态生成sql对象
+  BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+  //参数队列
+  List&lt;ParameterMapping&gt; parameterMappings = boundSql.getParameterMappings();
+  if (parameterMappings == null || parameterMappings.isEmpty()) {
+    boundSql = new BoundSql(configuration, boundSql.getSql(), parameterMap.getParameterMappings(), parameterObject);
+  }
+
+  for (ParameterMapping pm : boundSql.getParameterMappings()) {
+    String rmId = pm.getResultMapId();
+    if (rmId != null) {
+      ResultMap rm = configuration.getResultMap(rmId);
+      if (rm != null) {
+        hasNestedResultMaps |= rm.hasNestedResultMaps();
+      }
+    }
+  }
+  return boundSql;
+}
+</code></pre><p>　　由于是动态sql，所以此时的sqlSource是DynamicSqlSource类型</p>
+<pre><code>public BoundSql getBoundSql(Object parameterObject) {
+    DynamicContext context = new DynamicContext(configuration, parameterObject);
+    //遍历本sql下的所有子标签（如if，forEach等），与参数进行匹配，生成最终要执行的sql。
+    rootSqlNode.apply(context);
+    //SQLSource的创建者
+    SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
+    //获取参数类型
+    Class&lt;?&gt; parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
+    //创建SQLSource实例，此处其实也是使用的StaticSqlSource
+    SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
+    BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+    //将parameterObject和DatabaseId放入boundSql中
+    for (Map.Entry&lt;String, Object&gt; entry : context.getBindings().entrySet()) {
+      boundSql.setAdditionalParameter(entry.getKey(), entry.getValue());
+    }
+    return boundSql;
+  }
+</code></pre><p>　　值得关注的是rootSqlNode.apply(context)，这个方法就是组装动态节点的入口。在上面的创建流程中有提到动态sql的节点集合是包装在MixedSqlNode中的，此处的rootSqlNode自然也就是MixedSqlNode类型</p>
+<pre><code>public boolean apply(DynamicContext context) {
+    for (SqlNode sqlNode : contents) {
+      sqlNode.apply(context);
+    }
+    return true;
+  }
+</code></pre><p>　　在apply中将集合中的参数依次取出，依次拼接。以if标签对应的IfSqlNode为例：</p>
+<pre><code>public boolean apply(DynamicContext context) {
+    if (evaluator.evaluateBoolean(test, context.getBindings())) {
+      contents.apply(context);
+      return true;
+    }
+    return false;
+  }
+</code></pre><p>　　此时便完成了sql的动态生成。</p>
+]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_11]]></title>
+      <title><![CDATA[MyBatis源码解析：Plugin]]></title>
       <url>/2017/06/15/mybatis-11/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>　　Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。</p>
+<h1 id="1-Plugin可以做什么"><a href="#1-Plugin可以做什么" class="headerlink" title="1. Plugin可以做什么"></a>1. Plugin可以做什么</h1><p>　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。<br><a id="more"></a></p>
+<h1 id="2-Plugin如何工作"><a href="#2-Plugin如何工作" class="headerlink" title="2. Plugin如何工作"></a>2. Plugin如何工作</h1><p><img src="/images/mybatis_23.png" alt=""></p>
+<p>　　要使用Plugin首先要在config中进行配置</p>
+<pre><code>&lt;plugins&gt;
+    &lt;plugin interceptor=&quot;interceptor.ExampleInterceptor&quot;&gt;&lt;/plugin&gt;
+&lt;/plugins&gt;
+</code></pre><p>　　在MyBatis初始化的时候创建了运行环境（Configuration），那Plugin自然也脱离不了这个范畴，在Configuration中有四个触发点会对拦截器进行注册，下面来看一个例子：</p>
+<pre><code>public ParameterHandler newParameterHandler(MappedStatement mappedStatement, Object parameterObject, BoundSql boundSql) {
+   ParameterHandler parameterHandler = mappedStatement.getLang().createParameterHandler(mappedStatement, parameterObject, boundSql);
+   parameterHandler = (ParameterHandler) interceptorChain.pluginAll(parameterHandler);
+   return parameterHandler;
+ }
+</code></pre><p>　　此处调用了interceptorChain.pluginAll，这个interceptorChain顾名思义就是拦截器链</p>
+<pre><code>public Object pluginAll(Object target) {
+    for (Interceptor interceptor : interceptors) {
+      target = interceptor.plugin(target);
+    }
+    return target;
+  }
+</code></pre><p>　　在pluginAll方法中每次都会将拦截器链中的所有实例依次代理指定类，既每次创建ParameterHandler、ResultSetHandler、StatementHandler、Executor实例的时候都会用所有已注册的拦截器进行代理，性能消耗真心大！</p>
+<pre><code>public Object plugin(Object target) {
+        return Plugin.wrap(target, this);
+    }
+public static Object wrap(Object target, Interceptor interceptor) {
+    //获取Interceptor的拦截类和方法
+    Map&lt;Class&lt;?&gt;, Set&lt;Method&gt;&gt; signatureMap = getSignatureMap(interceptor);
+    Class&lt;?&gt; type = target.getClass();
+    //匹配传入对象target是否实现Interceptor指定拦截的接口
+    Class&lt;?&gt;[] interfaces = getAllInterfaces(type, signatureMap);
+    if (interfaces.length &gt; 0) {
+      return Proxy.newProxyInstance(
+          type.getClassLoader(),
+          interfaces,
+          new Plugin(target, interceptor, signatureMap));
+    }
+    return target;
+  }
+</code></pre><p>　　下面看下plugin的调用流程，以拦截StatementHandler的prepare方法为例，因为Plugin的存在，首先会执行invoke方法</p>
+<pre><code>public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    try {
+      Set&lt;Method&gt; methods = signatureMap.get(method.getDeclaringClass());
+      //匹配当前执行方法是否存在对应拦截器
+      if (methods != null &amp;&amp; methods.contains(method)) {
+        //存在则执行拦截器的intercept方法
+        return interceptor.intercept(new Invocation(target, method, args));
+      }
+      return method.invoke(target, args);
+    } catch (Exception e) {
+      throw ExceptionUtil.unwrapThrowable(e);
+    }
+  }
+</code></pre><p>　　如果存在此方法的拦截器，则调用拦截器的intercept方法，下面展示了几种常用变量的获取方式：</p>
+<pre><code>public Object intercept(Invocation invocation) throws Throwable {
+        //statementHandler
+        MetaObject statementHandler = MetaObject.forObject(invocation.getTarget(), new DefaultObjectFactory(), new DefaultObjectWrapperFactory(), new DefaultReflectorFactory());
+        //具体执行的statementHandler，此处是PreparedStatementHandler
+        MetaObject ps = statementHandler.metaObjectForProperty(&quot;delegate&quot;);
+        //MappedStatement
+        MappedStatement ms = (MappedStatement) ps.getValue(&quot;mappedStatement&quot;);
+        //Configuration
+        Configuration config = (Configuration) ps.getValue(&quot;configuration&quot;);
+        //参数对象
+        Object parameterObject = statementHandler.getValue(&quot;parameterHandler.parameterObject&quot;);
+        //sql对象
+        BoundSql bs = (BoundSql) statementHandler.getValue(&quot;boundSql&quot;); 
+  //执行被拦截方法
+        return invocation.proceed();
+    }
+</code></pre><h1 id="3-多个Plugin的执行顺序"><a href="#3-多个Plugin的执行顺序" class="headerlink" title="3. 多个Plugin的执行顺序"></a>3. 多个Plugin的执行顺序</h1><p>　　上边既然提到了拦截器链，那自然是可以配置多个Plugin的</p>
+<pre><code>&lt;plugins&gt;
+         &lt;plugin interceptor=&quot;interceptor.Interceptor1&quot;&gt;&lt;/plugin&gt;
+         &lt;plugin interceptor=&quot;interceptor.Interceptor2&quot;&gt;&lt;/plugin&gt;
+         &lt;plugin interceptor=&quot;interceptor.Interceptor3&quot;&gt;&lt;/plugin&gt;
+ &lt;/plugins&gt;
+</code></pre><p>　　上面配置了三个Plugin，在创建运行环境（Configuration）时会依次将Plugin注册在拦截器中，但是为对象绑定代理时顺序则出现了一些不一样的地方，代理的执行顺序却不一定与绑定的顺序一致。如上面的intercept方法：<br>　　<br>    public Object intercept(Invocation invocation) throws Throwable {<br>            //TODO1<br>      invocation.proceed();<br>            //TODO2<br>        }<br>　　如果是这种形式的拦截器，则会先执行TODO1，然后执行下级拦截器，之后再转回TODO2。</p>
+<h1 id="4-拦截器的优缺点"><a href="#4-拦截器的优缺点" class="headerlink" title="4. 拦截器的优缺点"></a>4. 拦截器的优缺点</h1><p>　　在漫长的开发过程中，因为人自身的问题导致的程序bug层出不穷，框架就是在这种情况下应运而生，框架简化了编码的操作，极大的拉进了技术人员的差距，但是框架也封装了底层的操作，使得开发人员对程序的把控程度更低了，如果框架的一小部分不适合实际的业务，但是又无法更换框架的时候就需要Plugin这种存在，Plugin是MyBatis主动提供出来的流程修改入口，只要你想，甚至可以改变SqlSession的执行流程。</p>
+<p>　　Plugin可以使得开发人员可以根据具体业务对MyBatis的底层做适当的干涉，但是这里就牵涉到第一个问题，人员的问题，如果开发人员自身技术不是很深入，有可能导致整个流程崩溃！一定要慎用！<br>而且过多的拦截器会极大的消耗服务器资源，导致运行缓慢。</p>
+]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_10]]></title>
+      <title><![CDATA[MyBatis源码解析：MetaObject]]></title>
       <url>/2017/06/15/mybatis-10/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>　　MyBatis作为一款ORM框架，反射是必不可少的一环，reflection就是MyBatis的反射模块。从代码角度来看reflection包相当的独立，除了jdk之外没有其他的包外引用，完全可以单独提取出来作为工具使用。<br><img src="/images/mybatis_18.png" alt=""><br><a id="more"></a></p>
+<h1 id="1-MetaObject创建流程"><a href="#1-MetaObject创建流程" class="headerlink" title="1. MetaObject创建流程"></a>1. MetaObject创建流程</h1><p><img src="/images/mybatis_19.png" alt=""></p>
+<h1 id="2-MetaObject"><a href="#2-MetaObject" class="headerlink" title="2. MetaObject"></a>2. MetaObject</h1><p><img src="/images/mybatis_20.png" alt=""></p>
+<p>　　MetaObject作为reflection暴露在最外层的调用类，不仅承载了提供反射的各种实现调用的入口的责任，还担任了下层调用对象（ObjectWrapper包装者）的分发任务，MetaObject只有一个私有的构造方法，所以想创建MetaObject的实例只能通过MetaObject.forObject方法。</p>
+<pre><code> public static MetaObject forObject(Object object, ObjectFactory objectFactory, ObjectWrapperFactory objectWrapperFactory, ReflectorFactory reflectorFactory) {
+    if (object == null) {
+      return SystemMetaObject.NULL_META_OBJECT;
+    } else {
+      return new MetaObject(object, objectFactory, objectWrapperFactory, reflectorFactory);
+    }
+  }
+private MetaObject(Object object, ObjectFactory objectFactory, ObjectWrapperFactory objectWrapperFactory, ReflectorFactory reflectorFactory) {
+    this.originalObject = object;
+    this.objectFactory = objectFactory;
+    this.objectWrapperFactory = objectWrapperFactory;
+    this.reflectorFactory = reflectorFactory;
+
+    //根据传入参数判断实例化哪种包装类
+    if (object instanceof ObjectWrapper) {
+      this.objectWrapper = (ObjectWrapper) object;
+    } else if (objectWrapperFactory.hasWrapperFor(object)) {
+      this.objectWrapper = objectWrapperFactory.getWrapperFor(this, object);
+    } else if (object instanceof Map) {
+      this.objectWrapper = new MapWrapper(this, (Map) object);
+    } else if (object instanceof Collection) {
+      this.objectWrapper = new CollectionWrapper(this, (Collection) object);
+    } else {
+      this.objectWrapper = new BeanWrapper(this, object);
+    }
+  }
+</code></pre><p>既然MetaObject是以反射为基础，那么总重要的自然是getter和setter的实现，下面看一下MetaObject是如何操作属性的：</p>
+<pre><code> public Object getValue(String name) {
+    PropertyTokenizer prop = new PropertyTokenizer(name);
+    if (prop.hasNext()) {
+      //实例化指定次级属性的反射实例
+      MetaObject metaValue = metaObjectForProperty(prop.getIndexedName());
+      if (metaValue == SystemMetaObject.NULL_META_OBJECT) {
+        //如果下级对象是null，则返回null。
+        return null;
+      } else {
+        //如果传入的是多级参数名，则会依次向下直到获取最原始的被包装对象
+        return metaValue.getValue(prop.getChildren());
+      }
+    } else {
+      //获取指定属性
+      return objectWrapper.get(prop);
+    }
+  }
+public void setValue(String name, Object value) {
+    PropertyTokenizer prop = new PropertyTokenizer(name);
+    if (prop.hasNext()) {
+      //如果传入的是多级参数名，则会依次向下直到获取最原始的被包装对象
+      MetaObject metaValue = metaObjectForProperty(prop.getIndexedName());
+      if (metaValue == SystemMetaObject.NULL_META_OBJECT) {
+        //此包装类的上一层为NULL
+        if (value == null &amp;&amp; prop.getChildren() != null) {
+          //如果值为空且仍有下级对象，则不进行set
+          return;
+        } else {
+          //实例化子级对象的元对象
+          metaValue = objectWrapper.instantiatePropertyValue(name, prop, objectFactory);
+        }
+      }
+      //依次向下调用
+      metaValue.setValue(prop.getChildren(), value);
+    } else {
+      //将属性放入指定对象
+      objectWrapper.set(prop, value);
+    }
+  }
+</code></pre><p>由上面代码可以看出，MetaObject作为一个反射入口，关键方法的抽象程度是很高的，在这一层也仅仅处理了对象这一层级的逻辑，凡事涉及具体属性的步骤都下放到ObjectWrapper中执行。</p>
+<h1 id="3-ObjectWrapper"><a href="#3-ObjectWrapper" class="headerlink" title="3. ObjectWrapper"></a>3. ObjectWrapper</h1><p><img src="/images/mybatis_21.png" alt=""><br>　　上面的MetaObject将指定的属性定位到最后一级，然后就轮到ObjectWrapper出场了，ObjectWrapper主要的职责就是处理这个最后一级的类型，不仅支持简单属性的操作，还兼容集合类型的属性。</p>
+<pre><code>public Object get(PropertyTokenizer prop) {
+    if (prop.getIndex() != null) {
+      //如果是子级对象是集合类型，则先取出集合对象
+      Object collection = resolveCollection(prop, object);
+      //从集合对象中取出对应属性的值
+      return getCollectionValue(prop, collection);
+    } else {
+      //从bean对象中取出对应属性的值
+      return getBeanProperty(prop, object);
+    }
+  }
+public void set(PropertyTokenizer prop, Object value) {
+    if (prop.getIndex() != null) {
+      //如果是子级对象是集合类型，则先取出集合对象
+      Object collection = resolveCollection(prop, object);
+      //将值放入对象的指定key中
+      setCollectionValue(prop, collection, value);
+    } else {
+      //为指定属性赋值
+      setBeanProperty(prop, object, value);
+    }
+  }
+/**
+   * 实例化子级对象的元对象
+   */
+  public MetaObject instantiatePropertyValue(String name, PropertyTokenizer prop, ObjectFactory objectFactory) {
+    MetaObject metaValue;
+    Class&lt;?&gt; type = getSetterType(prop.getName());
+    try {
+      //创建子级对象实例
+      Object newObject = objectFactory.create(type);
+      //创建实例的元对象实例
+      metaValue = MetaObject.forObject(newObject, metaObject.getObjectFactory(), metaObject.getObjectWrapperFactory(), metaObject.getReflectorFactory());
+      //将子级对象放入父级对象中，类似user.setName()
+      set(prop, newObject);
+    } catch (Exception e) {
+      throw new ReflectionException(&quot;Cannot set value of property &apos;&quot; + name + &quot;&apos; because &apos;&quot; + name + &quot;&apos; is null and cannot be instantiated on instance of &quot; + type.getName() + &quot;. Cause:&quot; + e.toString(), e);
+    }
+    return metaValue;
+  }
+private Object getBeanProperty(PropertyTokenizer prop, Object object) {
+    try {
+      //通过反射获取该属性的getter方法
+      Invoker method = metaClass.getGetInvoker(prop.getName());
+      try {
+        return method.invoke(object, NO_ARGUMENTS);
+      } catch (Throwable t) {
+        throw ExceptionUtil.unwrapThrowable(t);
+      }
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Throwable t) {
+      throw new ReflectionException(&quot;Could not get property &apos;&quot; + prop.getName() + &quot;&apos; from &quot; + object.getClass() + &quot;.  Cause: &quot; + t.toString(), t);
+    }
+  }
+</code></pre><p>从这个方法可以看出，实际的操作是下放到MetaClass中的，而Invoker才是真正的反射调用器。</p>
+<h1 id="4-MetaClass"><a href="#4-MetaClass" class="headerlink" title="4. MetaClass"></a>4. MetaClass</h1><p><img src="/images/mybatis_22.png" alt=""></p>
+<p>　　MetaClass在我的理解里有些类似模板，MetaClass与MetaObject的关系类似于类与实例，MetaClass提供了类的各种属性方法的反射调用器，MetaObject提供了具体对象的引用，通过ObjectWrapper这个黑中介就联系到了一起。</p>
+<pre><code>//获取name属性的getter调用器
+  public Invoker getGetInvoker(String name) {
+    return reflector.getGetInvoker(name);
+  }
+
+  //获取name属性的setter调用器
+  public Invoker getSetInvoker(String name) {
+    return reflector.getSetInvoker(name);
+  }
+/**
+   * 获取prop中一级属性的类型
+   * @param prop
+   * @return
+   */
+  private Class&lt;?&gt; getGetterType(PropertyTokenizer prop) {
+    Class&lt;?&gt; type = reflector.getGetterType(prop.getName());
+    if (prop.getIndex() != null &amp;&amp; Collection.class.isAssignableFrom(type)) {
+      //prop指定属性为实现了Collection接口的集合类型
+      Type returnType = getGenericGetterType(prop.getName());
+      if (returnType instanceof ParameterizedType) {
+        Type[] actualTypeArguments = ((ParameterizedType) returnType).getActualTypeArguments();
+        if (actualTypeArguments != null &amp;&amp; actualTypeArguments.length == 1) {
+          returnType = actualTypeArguments[0];
+          if (returnType instanceof Class) {
+            type = (Class&lt;?&gt;) returnType;
+          } else if (returnType instanceof ParameterizedType) {
+            type = (Class&lt;?&gt;) ((ParameterizedType) returnType).getRawType();
+          }
+        }
+      }
+    }
+    return type;
+  }
+/**
+   * 查询是否存在name属性的setter方法
+   * @param name
+   * @return
+   */
+  public boolean hasSetter(String name) {
+    PropertyTokenizer prop = new PropertyTokenizer(name);
+    if (prop.hasNext()) {
+      //如果是多级属性，会依次向下递归，查询指定的最底层属性的setter方法
+      if (reflector.hasSetter(prop.getName())) {
+        MetaClass metaProp = metaClassForProperty(prop.getName());
+        return metaProp.hasSetter(prop.getChildren());
+      } else {
+        return false;
+      }
+    } else {
+      return reflector.hasSetter(prop.getName());
+    }
+  }
+</code></pre><h1 id="5-Reflector"><a href="#5-Reflector" class="headerlink" title="5. Reflector"></a>5. Reflector</h1><p>　　Reflector是整个反射模块的核心，是维护Invoker的容器，所有的反射操作都会放到Reflector来进行调度。下面看下Reflector的初始化流程：</p>
+<pre><code>//反射容器对应的类
+  private Class&lt;?&gt; type;
+  //setter方法调用器缓存
+  private Map&lt;String, Invoker&gt; setMethods = new HashMap&lt;String, Invoker&gt;();
+  //getter方法调用器缓存
+  private Map&lt;String, Invoker&gt; getMethods = new HashMap&lt;String, Invoker&gt;();
+  //setter方法对应属性类型缓存
+  private Map&lt;String, Class&lt;?&gt;&gt; setTypes = new HashMap&lt;String, Class&lt;?&gt;&gt;();
+  //getter方法对应属性类型缓存
+  private Map&lt;String, Class&lt;?&gt;&gt; getTypes = new HashMap&lt;String, Class&lt;?&gt;&gt;();
+  //默认构造器
+  private Constructor&lt;?&gt; defaultConstructor;
+  //全大写属性名集合，为了兼容传入参数的大小写
+  private Map&lt;String, String&gt; caseInsensitivePropertyMap = new HashMap&lt;String, String&gt;();
+
+public Reflector(Class&lt;?&gt; clazz) {
+    type = clazz;
+    //注册默认构造器
+    addDefaultConstructor(clazz);
+    //注册getter方法
+    addGetMethods(clazz);
+    //注册setter方法
+    addSetMethods(clazz);
+    //注册属性
+    addFields(clazz);
+    //可读属性名集合
+    readablePropertyNames = getMethods.keySet().toArray(new String[getMethods.keySet().size()]);
+    //可写属性名集合
+    writeablePropertyNames = setMethods.keySet().toArray(new String[setMethods.keySet().size()]);
+    //将属性名改为大写，为做大小写兼容做准备
+    for (String propName : readablePropertyNames) {
+      caseInsensitivePropertyMap.put(propName.toUpperCase(Locale.ENGLISH), propName);
+    }
+    for (String propName : writeablePropertyNames) {
+      caseInsensitivePropertyMap.put(propName.toUpperCase(Locale.ENGLISH), propName);
+    }
+  }
+/**
+   * 注册无参构造方法
+   */
+  private void addDefaultConstructor(Class&lt;?&gt; clazz) {
+    //获取clazz的所有构造器
+    Constructor&lt;?&gt;[] consts = clazz.getDeclaredConstructors();
+    for (Constructor&lt;?&gt; constructor : consts) {
+      if (constructor.getParameterTypes().length == 0) {
+        //无参构造方法
+        if (canAccessPrivateMethods()) {
+          try {
+            //关闭java安全检查，提高反射性能
+            constructor.setAccessible(true);
+          } catch (Exception e) {
+          }
+        }
+        //上边取消了无参构造方法的安全检查，此处将其赋值给defaultConstructor
+        if (constructor.isAccessible()) {
+          this.defaultConstructor = constructor;
+        }
+      }
+    }
+  }
+/**
+   * 注册getter方法
+   * @param cls
+   */
+  private void addGetMethods(Class&lt;?&gt; cls) {
+    Map&lt;String, List&lt;Method&gt;&gt; conflictingGetters = new HashMap&lt;String, List&lt;Method&gt;&gt;();
+    //获取cls中的所有方法，包括父类和接口中的方法
+    Method[] methods = getClassMethods(cls);
+    for (Method method : methods) {
+      //getter方法不应包含参数
+      if (method.getParameterTypes().length &gt; 0) {
+        continue;
+      }
+      String name = method.getName();
+      //判断方法名是否符合get或者布尔值get命名
+      if ((name.startsWith(&quot;get&quot;) &amp;&amp; name.length() &gt; 3)
+          || (name.startsWith(&quot;is&quot;) &amp;&amp; name.length() &gt; 2)) {
+        name = PropertyNamer.methodToProperty(name);
+        //将get方法实例添加至conflictingGetters
+        addMethodConflict(conflictingGetters, name, method);
+      }
+    }
+    resolveGetterConflicts(conflictingGetters);
+  }
+/**
+   * 过滤掉同一名称的getter方法，返回值为同一继承树的类型以子类型为主
+   * @param conflictingGetters
+   */
+  private void resolveGetterConflicts(Map&lt;String, List&lt;Method&gt;&gt; conflictingGetters) {
+    for (Entry&lt;String, List&lt;Method&gt;&gt; entry : conflictingGetters.entrySet()) {
+      Method winner = null;
+      String propName = entry.getKey();
+      for (Method candidate : entry.getValue()) {
+        if (winner == null) {
+          winner = candidate;
+          continue;
+        }
+        Class&lt;?&gt; winnerType = winner.getReturnType();
+        Class&lt;?&gt; candidateType = candidate.getReturnType();
+        //因为方法对应属性名相同（不论前缀是is或get），所以如果两者返回值类型相同时必为布尔类型（非布尔类型默认不使用is前缀）。
+        if (candidateType.equals(winnerType)) {
+          if (!boolean.class.equals(candidateType)) {
+            throw new ReflectionException(
+                &quot;Illegal overloaded getter method with ambiguous type for property &quot;
+                    + propName + &quot; in class &quot; + winner.getDeclaringClass()
+                    + &quot;. This breaks the JavaBeans specification and can cause unpredictable results.&quot;);
+          } else if (candidate.getName().startsWith(&quot;is&quot;)) {
+            winner = candidate;
+          }
+        } else if (candidateType.isAssignableFrom(winnerType)) {
+          // OK getter type is descendant
+        } else if (winnerType.isAssignableFrom(candidateType)) {
+          //winnerType是candidateType的父类或接口或两者相同，此时以子类类型为主。
+          winner = candidate;
+        } else {
+          throw new ReflectionException(
+              &quot;Illegal overloaded getter method with ambiguous type for property &quot;
+                  + propName + &quot; in class &quot; + winner.getDeclaringClass()
+                  + &quot;. This breaks the JavaBeans specification and can cause unpredictable results.&quot;);
+        }
+      }
+      //将method及返回类型添加至缓存区
+      addGetMethod(propName, winner);
+    }
+  }
+/**
+   * 注册setter方法
+   * @param cls
+   */
+  private void addSetMethods(Class&lt;?&gt; cls) {
+    Map&lt;String, List&lt;Method&gt;&gt; conflictingSetters = new HashMap&lt;String, List&lt;Method&gt;&gt;();
+    Method[] methods = getClassMethods(cls);
+    for (Method method : methods) {
+      String name = method.getName();
+      if (name.startsWith(&quot;set&quot;) &amp;&amp; name.length() &gt; 3) {
+        if (method.getParameterTypes().length == 1) {
+          //以set开头且只有一个参数的判定为setter方法
+          name = PropertyNamer.methodToProperty(name);
+          //将set方法实例添加至conflictingSetters
+          addMethodConflict(conflictingSetters, name, method);
+        }
+      }
+    }
+    resolveSetterConflicts(conflictingSetters);
+  }
+/**
+   * 将method添加值conflictingMethods集合,可以支持同一属性多个方法
+   * @param conflictingMethods
+   * @param name
+   * @param method
+   */
+  private void addMethodConflict(Map&lt;String, List&lt;Method&gt;&gt; conflictingMethods, String name, Method method) {
+    List&lt;Method&gt; list = conflictingMethods.get(name);
+    if (list == null) {
+      list = new ArrayList&lt;Method&gt;();
+      conflictingMethods.put(name, list);
+    }
+    list.add(method);
+  }
+/**
+   * 过滤掉同一名称的setter方法，返回值为同一继承树的类型以子类型为主
+   * @param conflictingGetters
+   */
+  private void resolveSetterConflicts(Map&lt;String, List&lt;Method&gt;&gt; conflictingSetters) {
+    for (String propName : conflictingSetters.keySet()) {
+      List&lt;Method&gt; setters = conflictingSetters.get(propName);
+      //从缓存集合中获取propName属性对应的get类型
+      Class&lt;?&gt; getterType = getTypes.get(propName);
+      Method match = null;
+      ReflectionException exception = null;
+      for (Method setter : setters) {
+        Class&lt;?&gt; paramType = setter.getParameterTypes()[0];
+        if (paramType.equals(getterType)) {
+          // should be the best match
+          match = setter;
+          break;
+        }
+        if (exception == null) {
+          try {
+            //取match与setter中返回类型为子类的方法
+            match = pickBetterSetter(match, setter, propName);
+          } catch (ReflectionException e) {
+            match = null;
+            exception = e;
+          }
+        }
+      }
+      if (match == null) {
+        throw exception;
+      } else {
+        //将propName的set方法和set类型放入缓存
+        addSetMethod(propName, match);
+      }
+    }
+  }
+/**
+   * 注册属性
+   * @param clazz
+   */
+  private void addFields(Class&lt;?&gt; clazz) {
+    Field[] fields = clazz.getDeclaredFields();
+    for (Field field : fields) {
+      //检查是否能够访问类中的字段和调用方法。注意，这不仅包括 public. 而且还包括 protected 和 private 字段和方法。
+      if (canAccessPrivateMethods()) {
+        try {
+          //关闭属性的安全检查
+          field.setAccessible(true);
+        } catch (Exception e) {
+        }
+      }
+      if (field.isAccessible()) {
+        //检查缓存中是否包含field的get. set方法，如果没有则创建新的get. set方法放入缓存区
+        if (!setMethods.containsKey(field.getName())) {
+          int modifiers = field.getModifiers();
+          //同时使用static和final修饰的变量不能使用反射获取
+          if (!(Modifier.isFinal(modifiers) &amp;&amp; Modifier.isStatic(modifiers))) {
+            addSetField(field);
+          }
+        }
+        if (!getMethods.containsKey(field.getName())) {
+          addGetField(field);
+        }
+      }
+    }
+    if (clazz.getSuperclass() != null) {
+      //注册父类的属性
+      addFields(clazz.getSuperclass());
+    }
+  }
+</code></pre><h1 id="6-Invoker"><a href="#6-Invoker" class="headerlink" title="6. Invoker"></a>6. Invoker</h1><p>作为具体的反射操作调用器，Invoker提供了三种默认实现。</p>
+<ul>
+<li><p>GetFieldInvoker：属性get方法调用器</p>
+<p>  public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {</p>
+<pre><code>  return field.get(target);
+}
+</code></pre></li>
+<li><p>SetFieldInvoker：属性set方法调用器</p>
+<p>  public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {</p>
+<pre><code>  field.set(target, args[0]);
+  return null;
+}
+</code></pre></li>
+<li><p>MethodInvoker：方法调用器</p>
+<p>  public MethodInvoker(Method method) {</p>
+<pre><code>  this.method = method;
+  //此处设置类型是为了方便get. set方法
+  if (method.getParameterTypes().length == 1) {
+    type = method.getParameterTypes()[0];
+  } else {
+    type = method.getReturnType();
+  }
+}
+</code></pre><p>  public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {</p>
+<pre><code>  return method.invoke(target, args);
+}
+</code></pre></li>
+</ul>
+<h1 id="7-PropertyTokenizer"><a href="#7-PropertyTokenizer" class="headerlink" title="7. PropertyTokenizer"></a>7. PropertyTokenizer</h1><p>　　PropertyTokenizer负责处理传入的属性名字符串，这里不仅支持单级，还支持多级和集合类型的属性名。</p>
+<pre><code>public PropertyTokenizer(String fullname) {
+    int delim = fullname.indexOf(&apos;.&apos;);
+    if (delim &gt; -1) {
+      //如果传入的是多级属性名，则name为一级属性，children为次级属性
+      name = fullname.substring(0, delim);
+      children = fullname.substring(delim + 1);
+    } else {
+      //如果传入的是单级属性，name为属性名
+      name = fullname;
+      children = null;
+    }
+    //此处先备份name为了处理属性类型为集合的情况
+    indexedName = name;
+    delim = name.indexOf(&apos;[&apos;);
+    if (delim &gt; -1) {
+      //如果name代表的属性为集合类型，MyBatis默认用[]表示，如user.books[math]
+      //index表示集合中的指定属性名
+      index = name.substring(delim + 1, name.length() - 1);
+      //name表示集合名
+      name = name.substring(0, delim);
+    }
+  }
+</code></pre><h1 id="8-PropertyNamer"><a href="#8-PropertyNamer" class="headerlink" title="8. PropertyNamer"></a>8. PropertyNamer</h1><p>　　PropertyNamer通过方法名获取对应属性名，仅支持get. set. is开头的方法</p>
+<pre><code>/**
+   * 通过方法名获取对应的属性名，只支持get. set和is开头的方法
+   * @param name
+   * @return
+   */
+  public static String methodToProperty(String name) {
+    if (name.startsWith(&quot;is&quot;)) {
+      name = name.substring(2);
+    } else if (name.startsWith(&quot;get&quot;) || name.startsWith(&quot;set&quot;)) {
+      name = name.substring(3);
+    } else {
+      throw new ReflectionException(&quot;Error parsing property name &apos;&quot; + name + &quot;&apos;.  Didn&apos;t start with &apos;is&apos;, &apos;get&apos; or &apos;set&apos;.&quot;);
+    }
+    if (name.length() == 1 || (name.length() &gt; 1 &amp;&amp; !Character.isUpperCase(name.charAt(1)))) {
+      name = name.substring(0, 1).toLowerCase(Locale.ENGLISH) + name.substring(1);
+    }
+    return name;
+  }
+</code></pre><h1 id="9-为什么使用MetaObject"><a href="#9-为什么使用MetaObject" class="headerlink" title="9. 为什么使用MetaObject"></a>9. 为什么使用MetaObject</h1><p>　　MetaObject提供了方便而优雅的方式来操作对象的属性，不仅不需要手动处理各种reflect异常，还可以无视变量的作用域。</p>
+<p>　　MetaObject还支持Map和Connection形式的对象，不过相对javaBean来讲简单很多，此处不在赘述。</p>
+]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_9]]></title>
+      <title><![CDATA[MyBatis源码解析：数据源和连接池]]></title>
       <url>/2017/06/15/mybatis-9/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>　　MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。</p>
+<h1 id="1-DataSource的三种类型"><a href="#1-DataSource的三种类型" class="headerlink" title="1. DataSource的三种类型"></a>1. DataSource的三种类型</h1><p>MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。<br><a id="more"></a></p>
+<h1 id="2-DataSource的创建过程"><a href="#2-DataSource的创建过程" class="headerlink" title="2. DataSource的创建过程"></a>2. DataSource的创建过程</h1><p><img src="/images/mybatis_14.png" alt=""></p>
+<h2 id="2-1-在config-xml中配置environments标签"><a href="#2-1-在config-xml中配置environments标签" class="headerlink" title="2.1. 在config.xml中配置environments标签"></a>2.1. 在config.xml中配置environments标签</h2><pre><code>&lt;environments default=&quot;development1&quot;&gt;
+     &lt;environment id=&quot;development1&quot;&gt;
+         &lt;transactionManager type=&quot;JDBC&quot;&gt;&lt;/transactionManager&gt;
+         &lt;dataSource type=&quot;UNPOOLED&quot;&gt;
+             &lt;property name=&quot;driver&quot; value=&quot;${driver1}&quot;/&gt;
+            &lt;property name=&quot;url&quot; value=&quot;${url1}&quot;/&gt;
+            &lt;property name=&quot;username&quot; value=&quot;${username1}&quot;/&gt;
+            &lt;property name=&quot;password&quot; value=&quot;${password1}&quot;/&gt;
+         &lt;/dataSource&gt;
+     &lt;/environment&gt;
+&lt;/environments&gt;
+</code></pre><h2 id="2-2-创建SqlSessionFactory"><a href="#2-2-创建SqlSessionFactory" class="headerlink" title="2.2. 创建SqlSessionFactory"></a>2.2. 创建SqlSessionFactory</h2><pre><code>SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(is,&quot;development1&quot;);
+</code></pre><h2 id="2-3-构造Configuration实例"><a href="#2-3-构造Configuration实例" class="headerlink" title="2.3. 构造Configuration实例"></a>2.3. 构造Configuration实例</h2><pre><code>public Configuration parse() {
+    if (parsed) {
+      throw new BuilderException(&quot;Each XMLConfigBuilder can only be used once.&quot;);
+    }
+    parsed = true;
+    //获取config.xml配置文件中的内容，进行组装
+    parseConfiguration(parser.evalNode(&quot;/configuration&quot;));
+    return configuration;
+  }
+</code></pre><h2 id="2-4-读取environments标签"><a href="#2-4-读取environments标签" class="headerlink" title="2.4. 读取environments标签"></a>2.4. 读取environments标签</h2><pre><code>private void environmentsElement(XNode context) throws Exception {
+    if (context != null) {
+      //如果构建SqlSessionFactory时传入了environment参数，则使用指定数据源，否则使用配置的默认数据源
+      if (environment == null) {
+        environment = context.getStringAttribute(&quot;default&quot;);
+      }
+      //遍历所有配置的environment数据，搜索id与指定数据源匹配的元素
+      for (XNode child : context.getChildren()) {
+        String id = child.getStringAttribute(&quot;id&quot;);
+        if (isSpecifiedEnvironment(id)) {
+          //事务管理器工厂
+          TransactionFactory txFactory = transactionManagerElement(child.evalNode(&quot;transactionManager&quot;));
+          //数据源工厂
+          DataSourceFactory dsFactory = dataSourceElement(child.evalNode(&quot;dataSource&quot;));
+          DataSource dataSource = dsFactory.getDataSource();
+          //数据交互环境构造器
+          Environment.Builder environmentBuilder = new Environment.Builder(id)
+              .transactionFactory(txFactory)
+              .dataSource(dataSource);
+          //将数据源放入configuration上下文中
+          configuration.setEnvironment(environmentBuilder.build());
+        }
+      }
+    }
+  }
+</code></pre><h1 id="3-不使用连接池的DataSource"><a href="#3-不使用连接池的DataSource" class="headerlink" title="3. 不使用连接池的DataSource"></a>3. 不使用连接池的DataSource</h1><p><img src="/images/mybatis_15.png" alt=""></p>
+<p>UnpooledDataSource相对PooledDataSource简单一点，每次调用都创建一个数据库连接，执行之后连接即可销毁。相关类主要有以下两个</p>
+<h2 id="3-1-UnpooledDataSourceFactory"><a href="#3-1-UnpooledDataSourceFactory" class="headerlink" title="3.1. UnpooledDataSourceFactory"></a>3.1. UnpooledDataSourceFactory</h2><p>只有两个方法setProperties和getDataSource，一个设置数据源参数，一个获取数据源。</p>
+<h2 id="3-2-UnpooledDataSource"><a href="#3-2-UnpooledDataSource" class="headerlink" title="3.2. UnpooledDataSource"></a>3.2. UnpooledDataSource</h2><p>既然是数据源，那最重要也就是获取数据库连接的方法了，下面看下获取数据库连接的方法：</p>
+<pre><code>private Connection doGetConnection(Properties properties) throws SQLException {
+    //初始化数据库驱动，如果environment中的driver属性配置的数据库驱动没有初始化，则会通过反射加载指定驱动
+    initializeDriver();
+    //获取数据库连接
+    Connection connection = DriverManager.getConnection(url, properties);
+    //配置连接是否自动提交，隔离等级
+    configureConnection(connection);
+    return connection;
+  }
+</code></pre><h1 id="4-使用连接池的DataSource"><a href="#4-使用连接池的DataSource" class="headerlink" title="4. 使用连接池的DataSource"></a>4. 使用连接池的DataSource</h1><p><img src="/images/mybatis_16.png" alt=""></p>
+<p>　　PooledDataSource从源码角度来看实际是在UnpooledDataSource架子上做了一些扩展，在PooledDataSource维护了一个UnpooledDataSource实例，获取数据库连接的依然是UnpooledDataSource的那一套方法，不过既然要使用连接池自然不会如此简单，这就涉及到了PoolState和PooledConnection这两个类。</p>
+<h2 id="4-1-PoolState"><a href="#4-1-PoolState" class="headerlink" title="4.1. PoolState"></a>4.1. PoolState</h2><p>PoolState是连接池的状态上下文，内部维护了很多运行时的状态数据，其中只有两个参与了连接池的操作，(空闲连接队列)idleConnections和(活跃连接队列)activeConnections。</p>
+<h2 id="4-2-PooledConnection"><a href="#4-2-PooledConnection" class="headerlink" title="4.2. PooledConnection"></a>4.2. PooledConnection</h2><p>数据库连接的代理类，说到代理类，那自然就有invoke方法了：</p>
+<pre><code>public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    String methodName = method.getName();
+    //当执行close方法时，不会真的关闭连接，会根据连接池的状态决定如何处理
+    if (CLOSE.hashCode() == methodName.hashCode() &amp;&amp; CLOSE.equals(methodName)) {
+      dataSource.pushConnection(this);
+      return null;
+    } else {
+      try {
+        if (!Object.class.equals(method.getDeclaringClass())) {
+          //检查连接是否可用
+          checkConnection();
+        }
+        return method.invoke(realConnection, args);
+      } catch (Throwable t) {
+        throw ExceptionUtil.unwrapThrowable(t);
+      }
+    }
+  }
+</code></pre><p>有上面源码可知，其实代理主要是为了处理close方法，毕竟连接池中的连接是需要重用的，不然岂不是和不用连接池一样了。</p>
+<h2 id="4-3-PooledDataSource"><a href="#4-3-PooledDataSource" class="headerlink" title="4.3. PooledDataSource"></a>4.3. PooledDataSource</h2><pre><code>//连接池状态上下文
+private final PoolState state = new PoolState(this);
+//实际获取数据库连接的数据源
+private final UnpooledDataSource dataSource;
+//最大活跃连接数
+protected int poolMaximumActiveConnections = 10;
+//最大空闲连接数
+protected int poolMaximumIdleConnections = 5;
+//如果一次调用超过此时间，则会强制结束调用
+protected int poolMaximumCheckoutTime = 20000;
+//再次尝试连接的等待时间
+protected int poolTimeToWait = 20000;
+//心跳检测
+protected String poolPingQuery = &quot;NO PING QUERY SET&quot;;
+//是否使用心跳检测
+protected boolean poolPingEnabled;
+//如果一个连接超过此时间没有被使用，尝试ping这个数据源查看是否可用
+protected int poolPingConnectionsNotUsedFor;
+//连接的唯一code码
+private int expectedConnectionTypeCode;
+
+/**
+ * 强制关闭所有连接，修改连接池参数或数据源参数时调用
+ */
+public void forceCloseAll() {
+  //因为活跃连接和空闲连接的集合是在PoolState中维护，所以强制关闭时需要锁定state
+  synchronized (state) {
+    //强制关闭所有连接的触发点包括更改数据源信息，所以此处要重新赋值code
+    expectedConnectionTypeCode = assembleConnectionTypeCode(dataSource.getUrl(), dataSource.getUsername(), dataSource.getPassword());
+    //关闭所有活跃连接
+    for (int i = state.activeConnections.size(); i &gt; 0; i--) {
+      try {
+        PooledConnection conn = state.activeConnections.remove(i - 1);
+        //连接状态修改为不可用
+        conn.invalidate();
+        //因为PooledConnection实际上是Connection的代理类，所以关闭的时候需要获取JDBC的连接进行关闭。
+        Connection realConn = conn.getRealConnection();
+        if (!realConn.getAutoCommit()) {
+          realConn.rollback();
+        }
+        realConn.close();
+      } catch (Exception e) {
+      }
+    }
+    //关闭所有空闲连接
+    for (int i = state.idleConnections.size(); i &gt; 0; i--) {
+      try {
+        PooledConnection conn = state.idleConnections.remove(i - 1);
+        //连接状态修改为不可用
+        conn.invalidate();
+        //因为PooledConnection实际上是Connection的代理类，所以关闭的时候需要获取JDBC的连接进行关闭。
+        Connection realConn = conn.getRealConnection();
+        if (!realConn.getAutoCommit()) {
+          realConn.rollback();
+        }
+        realConn.close();
+      } catch (Exception e) {
+      }
+    }
+  }
+  if (log.isDebugEnabled()) {
+    log.debug(&quot;PooledDataSource forcefully closed/removed all connections.&quot;);
+  }
+}
+</code></pre><p>通常情况下，当我们使用完一个连接时，会调用close方法释放连接，避免影响性能，连接池中的连接代理实例调用close方法时实际上不会简单的释放掉连接，而是调用pushConnection方法将连接放入空闲队列，等待下次调用。</p>
+<pre><code>  protected void pushConnection(PooledConnection conn) throws SQLException {
+    synchronized (state) {
+      //从活跃连接队列中清除
+      state.activeConnections.remove(conn);
+      //连接是可用状态
+      if (conn.isValid()) {
+        //当前空闲连接数小于设置的最大空闲连接数且此连接的数据源与连接池相同
+        if (state.idleConnections.size() &lt; poolMaximumIdleConnections &amp;&amp; conn.getConnectionTypeCode() == expectedConnectionTypeCode) {
+          state.accumulatedCheckoutTime += conn.getCheckoutTime();
+          //如果连接设置手动提交，则回滚修改的内容，防止强制关闭引起数据错误
+          if (!conn.getRealConnection().getAutoCommit()) {
+            conn.getRealConnection().rollback();
+          }
+          //创建新的代理类，并放入空闲连接队列
+          PooledConnection newConn = new PooledConnection(conn.getRealConnection(), this);
+          state.idleConnections.add(newConn);
+          newConn.setCreatedTimestamp(conn.getCreatedTimestamp());
+          newConn.setLastUsedTimestamp(conn.getLastUsedTimestamp());
+          //废弃连接代理设置为不可用
+          conn.invalidate();
+          if (log.isDebugEnabled()) {
+            log.debug(&quot;Returned connection &quot; + newConn.getRealHashCode() + &quot; to pool.&quot;);
+          }
+          state.notifyAll();
+        } else {
+          state.accumulatedCheckoutTime += conn.getCheckoutTime();
+          //如果连接设置手动提交，则回滚修改的内容，防止强制关闭引起数据错误
+          if (!conn.getRealConnection().getAutoCommit()) {
+            conn.getRealConnection().rollback();
+          }
+          //关闭连接
+          conn.getRealConnection().close();
+          if (log.isDebugEnabled()) {
+            log.debug(&quot;Closed connection &quot; + conn.getRealHashCode() + &quot;.&quot;);
+          }
+          //废弃连接代理设置为不可用
+          conn.invalidate();
+        }
+      } else {
+        if (log.isDebugEnabled()) {
+          log.debug(&quot;A bad connection (&quot; + conn.getRealHashCode() + &quot;) attempted to return to the pool, discarding connection.&quot;);
+        }
+        state.badConnectionCount++;
+      }
+    }
+  }
+
+/**
+   * 获取连接
+   */
+  private PooledConnection popConnection(String username, String password) throws SQLException {
+    boolean countedWait = false;
+    PooledConnection conn = null;
+    long t = System.currentTimeMillis();
+    int localBadConnectionCount = 0;
+
+    while (conn == null) {
+      synchronized (state) {
+        if (!state.idleConnections.isEmpty()) {
+          //存在空闲连接时，取队列中的第一个空闲连接
+          conn = state.idleConnections.remove(0);
+          if (log.isDebugEnabled()) {
+            log.debug(&quot;Checked out connection &quot; + conn.getRealHashCode() + &quot; from pool.&quot;);
+          }
+        } else {
+          //连接池中不存在空闲连接时
+          //当连接池中的活跃连接小于最大的活跃连接数时
+          if (state.activeConnections.size() &lt; poolMaximumActiveConnections) {
+            //创建新的连接代理实例
+            conn = new PooledConnection(dataSource.getConnection(), this);
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;Created connection &quot; + conn.getRealHashCode() + &quot;.&quot;);
+            }
+          } else {
+            //当连接池中的活跃连接达到阈值时，不能创建新连接
+            //获取活跃连接队列中执行时间最长的实例（FIFO）
+            PooledConnection oldestActiveConnection = state.activeConnections.get(0);
+            long longestCheckoutTime = oldestActiveConnection.getCheckoutTime();
+            if (longestCheckoutTime &gt; poolMaximumCheckoutTime) {
+              //此连接的checkout时间已经超过了设置的最长checkout时间，此时可以将此连接当前操作作废，移出活跃队列
+              state.claimedOverdueConnectionCount++;
+              state.accumulatedCheckoutTimeOfOverdueConnections += longestCheckoutTime;
+              state.accumulatedCheckoutTime += longestCheckoutTime;
+              state.activeConnections.remove(oldestActiveConnection);
+              //将连接当前操作回滚，防止数据错误
+              if (!oldestActiveConnection.getRealConnection().getAutoCommit()) {
+                try {
+                  oldestActiveConnection.getRealConnection().rollback();
+                } catch (SQLException e) {
+                  log.debug(&quot;Bad connection. Could not roll back&quot;);
+                }  
+              }
+              //创建新的连接代理实例
+              conn = new PooledConnection(oldestActiveConnection.getRealConnection(), this);
+              conn.setCreatedTimestamp(oldestActiveConnection.getCreatedTimestamp());
+              conn.setLastUsedTimestamp(oldestActiveConnection.getLastUsedTimestamp());
+              //修改旧代理类为不可用
+              oldestActiveConnection.invalidate();
+              if (log.isDebugEnabled()) {
+                log.debug(&quot;Claimed overdue connection &quot; + conn.getRealHashCode() + &quot;.&quot;);
+              }
+            } else {
+              //当不能创建新连接，活跃连接中也没有超过过期时间的连接时，只能等待了=。=
+              try {
+                if (!countedWait) {
+                  state.hadToWaitCount++;
+                  countedWait = true;
+                }
+                if (log.isDebugEnabled()) {
+                  log.debug(&quot;Waiting as long as &quot; + poolTimeToWait + &quot; milliseconds for connection.&quot;);
+                }
+                long wt = System.currentTimeMillis();
+                //默认的等待时间和连接过期时间一样是20s，所以如果不做修改的话，20s之后必然会有连接可用，如果短时间内爆发超过处理能力数倍的并发请求的话，就不是能在这里处理的了
+                state.wait(poolTimeToWait);
+                state.accumulatedWaitTime += System.currentTimeMillis() - wt;
+              } catch (InterruptedException e) {
+                break;
+              }
+            }
+          }
+        }
+        if (conn != null) {
+          if (conn.isValid()) {
+            //当获取的连接可用时，首先将连接rollback，防止有未提交操作
+            if (!conn.getRealConnection().getAutoCommit()) {
+              conn.getRealConnection().rollback();
+            }
+            conn.setConnectionTypeCode(assembleConnectionTypeCode(dataSource.getUrl(), username, password));
+            conn.setCheckoutTimestamp(System.currentTimeMillis());
+            conn.setLastUsedTimestamp(System.currentTimeMillis());
+            //将连接放入活跃队列
+            state.activeConnections.add(conn);
+            state.requestCount++;
+            state.accumulatedRequestTime += System.currentTimeMillis() - t;
+          } else {
+            //当获取的连接不可用时，增加一个损坏连接数，如果损坏连接数达到阈值，则抛出异常
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;A bad connection (&quot; + conn.getRealHashCode() + &quot;) was returned from the pool, getting another connection.&quot;);
+            }
+            state.badConnectionCount++;
+            localBadConnectionCount++;
+            conn = null;
+            if (localBadConnectionCount &gt; (poolMaximumIdleConnections + 3)) {
+              if (log.isDebugEnabled()) {
+                log.debug(&quot;PooledDataSource: Could not get a good connection to the database.&quot;);
+              }
+              throw new SQLException(&quot;PooledDataSource: Could not get a good connection to the database.&quot;);
+            }
+          }
+        }
+      }
+    }
+
+    if (conn == null) {
+      if (log.isDebugEnabled()) {
+        log.debug(&quot;PooledDataSource: Unknown severe error condition.  The connection pool returned a null connection.&quot;);
+      }
+      throw new SQLException(&quot;PooledDataSource: Unknown severe error condition.  The connection pool returned a null connection.&quot;);
+    }
+
+    return conn;
+  }
+
+/**
+   * 检查连接是否可用
+   * @param conn - the connection to check
+   * @return True if the connection is still usable
+   */
+  protected boolean pingConnection(PooledConnection conn) {
+    boolean result = true;
+
+    try {
+      //1、校验连接是否已关闭
+      result = !conn.getRealConnection().isClosed();
+    } catch (SQLException e) {
+      if (log.isDebugEnabled()) {
+        log.debug(&quot;Connection &quot; + conn.getRealHashCode() + &quot; is BAD: &quot; + e.getMessage());
+      }
+      result = false;
+    }
+
+    if (result) {
+      //开启心跳测试
+      if (poolPingEnabled) {
+        //连接的空闲时间超过心跳测试的触发时间
+        if (poolPingConnectionsNotUsedFor &gt;= 0 &amp;&amp; conn.getTimeElapsedSinceLastUse() &gt; poolPingConnectionsNotUsedFor) {
+          try {
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;Testing connection &quot; + conn.getRealHashCode() + &quot; ...&quot;);
+            }
+            //尝试执行心跳测试
+            Connection realConn = conn.getRealConnection();
+            Statement statement = realConn.createStatement();
+            ResultSet rs = statement.executeQuery(poolPingQuery);
+            rs.close();
+            statement.close();
+            if (!realConn.getAutoCommit()) {
+              realConn.rollback();
+            }
+            result = true;
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;Connection &quot; + conn.getRealHashCode() + &quot; is GOOD!&quot;);
+            }
+          } catch (Exception e) {
+            log.warn(&quot;Execution of ping query &apos;&quot; + poolPingQuery + &quot;&apos; failed: &quot; + e.getMessage());
+            try {
+              conn.getRealConnection().close();
+            } catch (Exception e2) {
+            }
+            result = false;
+            if (log.isDebugEnabled()) {
+              log.debug(&quot;Connection &quot; + conn.getRealHashCode() + &quot; is BAD: &quot; + e.getMessage());
+            }
+          }
+        }
+      }
+    }
+    return result;
+  }
+</code></pre><h1 id="5-使用连接池有什么好处"><a href="#5-使用连接池有什么好处" class="headerlink" title="5. 使用连接池有什么好处"></a>5. 使用连接池有什么好处</h1><p>　　首先我们来看一下创建连接的性能消耗。</p>
+<pre><code>try {
+    Class.forName(&quot;com.mysql.jdbc.Driver&quot;);
+    String url = &quot;jdbc:mysql://192.168.1.39:3306/dlb&quot;;
+    long createConnectionTime = System.currentTimeMillis();
+    Connection conn = DriverManager.getConnection(url,&quot;ymt&quot;,&quot;yimiaotong2015&quot;);
+    System.out.println(&quot;创建连接消耗的时间：&quot;+(System.currentTimeMillis() - createConnectionTime));
+
+    long executeTime = System.currentTimeMillis();
+    PreparedStatement ps = conn.prepareStatement(&quot;select phoneNO from users where id = 1&quot;);
+    ResultSet rs = ps.executeQuery();
+    System.out.println(&quot;执行sql消耗时间：&quot;+(System.currentTimeMillis() - executeTime));
+
+} catch (ClassNotFoundException e) {
+    e.printStackTrace();
+} catch (SQLException e) {
+    e.printStackTrace();
+}
+
+![](/images/mybatis_17.png)
+</code></pre><p>创建一个连接需要178ms，如果请求量上来了，那画面太美。恰巧还是一个“不谙世事”的程序员，天天追着老板买新服务器，估计老板砍死你的心都有了。笑<br>连接池中的连接在执行sql操作之后不会进行close，而是调用pushConnection进行调度，将连接在活跃和空闲队列中来回流转，等待执行任务，这样就节约了每次都要创建连接的开销。</p>
+<h1 id="6-何时创建Connection"><a href="#6-何时创建Connection" class="headerlink" title="6. 何时创建Connection"></a>6. 何时创建Connection</h1><p>　　当我们需要执行一个sql语句时，Executor会调用getConnection方法创建一个Connection。</p>
+<pre><code>protected Connection getConnection(Log statementLog) throws SQLException {
+    Connection connection = transaction.getConnection();
+    if (statementLog.isDebugEnabled()) {
+      return ConnectionLogger.newInstance(connection, statementLog, queryStack);
+    } else {
+      return connection;
+    }
+  }
+public Connection getConnection() throws SQLException {
+    if (connection == null) {
+      openConnection();
+    }
+    return connection;
+  }
+</code></pre><h1 id="7-JNDI类型DataSource"><a href="#7-JNDI类型DataSource" class="headerlink" title="7. JNDI类型DataSource"></a>7. JNDI类型DataSource</h1><p>　　MyBatis定义了一个JndiDataSourceFactory来创建JDNI形式的数据源，具体配置参考各容器的文档。</p>
+]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_8]]></title>
+      <title><![CDATA[MyBatis源码解析：Mybatis的缓存机制]]></title>
       <url>/2017/06/15/mybatis-8/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>　　俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。</p>
+<h1 id="1-缓存的作用"><a href="#1-缓存的作用" class="headerlink" title="1. 缓存的作用"></a>1. 缓存的作用</h1><p>　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。<br><a id="more"></a></p>
+<h1 id="2-Cache"><a href="#2-Cache" class="headerlink" title="2. Cache"></a>2. Cache</h1><p>　　MyBatis的缓存基础是PerpetualCache，PerpetualCache实现了Cache接口，内部其实是维护了一个HashMap对象进行数据的缓存，下面看下Cache的家族树：<br><img src="/images/mybatis_9.png" alt=""></p>
+<p>乍一看哎呦喂，挺多实现类啊，其实这里使用了装饰者模式，其他的实现类都是装饰了PerpetualCache类。</p>
+<h1 id="3-一级缓存"><a href="#3-一级缓存" class="headerlink" title="3. 一级缓存"></a>3. 一级缓存</h1><p>　　MyBatis的一级缓存默认就是开启的（想关都关不掉），我们能做的就是设置一下他的生命周期，配置如下：</p>
+<pre><code>&lt;settings&gt;
+     &lt;setting name=&quot;localCacheScope&quot; value=&quot;SESSION|STATEMENT&quot; /&gt;
+ &lt;/settings&gt;
+</code></pre><p>如果配置为Session，就是以一次数据库会话为周期，在实际开发中通常一次请求只创建一次会话，所以也可以理解为以一次请求为周期的缓存。<br>如果配置为Statement，则仅作用于语句的执行上，不会影响同一会话的其他调用。</p>
+<p>下面我们来看下MyBatis的一级缓存是如何工作的：<br><img src="/images/mybatis_10.png" alt=""></p>
+<p>首先创建一个新的数据库会话，此时会实例化一个Executor</p>
+<pre><code>//实例化Executor执行器
+final Executor executor = configuration.newExecutor(tx, execType);
+在BaseExecutor维护了一个PerpetualCache，这个就是所说的一级缓存（也叫本地缓存）了
+//一级缓存（本地缓存）
+protected PerpetualCache localCache;
+在查询的时候会首先在这个一级缓存中查询是否有值
+list = resultHandler == null ? (List&lt;E&gt;) localCache.getObject(key) : null;
+if (list != null) {
+     //缓存中存在结果集时
+     handleLocallyCachedOutputParameters(ms, key, parameter, boundSql);
+} else {
+     //从数据库获取数据，此处会将结果保存在localCache中
+     list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
+}
+</code></pre><p>　　正确的使用缓存确实能提高不少性能，但是这里就引出了一个新问题，如果我缓存的数据过期了怎么办？对于一些时效性不强的模块中有一些脏数据或许不会影响使用，但是对于要求数据时效性很强的系统中就不能这么玩了，所以MyBatis提供了手动配置刷新时机的方法。</p>
+<p>一共有五个触发方法会刷新一级缓存：</p>
+<ul>
+<li>commit</li>
+<li>rollback</li>
+<li>update</li>
+<li>query（如果配置了flushCache属性为true或localCacheScope设置为Statement）</li>
+</ul>
+<p>只有query中的两个触发点是需要手动配置，其余三个都会自动清空一级缓存区。<br><img src="/images/mybatis_11.png" alt=""><br><img src="/images/mybatis_12.png" alt=""></p>
+<p>　　既然是大量操作的时候才会用到缓存，那么缓存的数据量想必是很大的，如何确定每次操作要请求的缓存数据对象就是一个问题了，在MyBatis中有一个叫做cacheKey的东西，这个就是用来确定缓存唯一性的key了，下面看一下生成cacheKey的方法：</p>
+<pre><code>public CacheKey createCacheKey(MappedStatement ms, Object parameterObject, RowBounds rowBounds, BoundSql boundSql) {
+    if (closed) {
+      throw new ExecutorException(&quot;Executor was closed.&quot;);
+    }
+    CacheKey cacheKey = new CacheKey();
+    cacheKey.update(ms.getId());
+    cacheKey.update(rowBounds.getOffset());
+    cacheKey.update(rowBounds.getLimit());
+    cacheKey.update(boundSql.getSql());
+    List&lt;ParameterMapping&gt; parameterMappings = boundSql.getParameterMappings();
+    TypeHandlerRegistry typeHandlerRegistry = ms.getConfiguration().getTypeHandlerRegistry();
+    // mimic DefaultParameterHandler logic
+    for (ParameterMapping parameterMapping : parameterMappings) {
+      if (parameterMapping.getMode() != ParameterMode.OUT) {
+        Object value;
+        String propertyName = parameterMapping.getProperty();
+        if (boundSql.hasAdditionalParameter(propertyName)) {
+          value = boundSql.getAdditionalParameter(propertyName);
+        } else if (parameterObject == null) {
+          value = null;
+        } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
+          value = parameterObject;
+        } else {
+          MetaObject metaObject = configuration.newMetaObject(parameterObject);
+          value = metaObject.getValue(propertyName);
+        }
+        cacheKey.update(value);
+      }
+    }
+    if (configuration.getEnvironment() != null) {
+      // issue #176
+      cacheKey.update(configuration.getEnvironment().getId());
+    }
+    return cacheKey;
+  }
+</code></pre><p>这里不难看出实际上MyBatis采用的是符合型key值，key的组合值有以下六项：</p>
+<ul>
+<li>MappedStatementID</li>
+<li>offset</li>
+<li>limit</li>
+<li>sql</li>
+<li>param value</li>
+<li>environmentID</li>
+</ul>
+<p>通过这六个组合参数可以看出MyBatis对于相同查询的定义：</p>
+<ul>
+<li>MappedStatementID必须相同，在构建Configuration时会为每个mapper方法创建一个唯一MappedStatement，所以这是第一个约束。</li>
+<li>查询范围必须相同，RowBounds中的offset和limit共同约束了本次查询的范围。这种分页是基于查询结果进行再次过滤，并不是数据库的物理分页。</li>
+<li>传递给JDBC的sql必须相同（BoundSql.getSql()）。由于MyBatis底层也是依赖于JDBC实现，对于JDBC来说只要传入的sql和参数相同就视为相同查询。</li>
+<li>查询语句的参数必须相同，这里有一个盲点，参数相同指的是sql有用到的参数必须相同，比如传入一个user对象，如果sql没有用到user.name这个属性，那么不论name的值是否相同都不会影响判断。</li>
+<li>数据源必须相同，这个就不用说了。</li>
+</ul>
+<p>一级缓存本质上是维护了一个HashMap，那么作为key的CacheKey就需要有一个统一的hash算法进行支持了，下面看下CacheKey的核心算法:</p>
+<pre><code>public void update(Object object) {
+    if (object != null &amp;&amp; object.getClass().isArray()) {
+      int length = Array.getLength(object);
+      for (int i = 0; i &lt; length; i++) {
+        Object element = Array.get(object, i);
+        doUpdate(element);
+      }
+    } else {
+      doUpdate(object);
+    }
+  }
+  private void doUpdate(Object object) {
+    //得到对象的hashCode
+    int baseHashCode = object == null ? 1 : object.hashCode();
+    //计数器+1
+    count++;
+    //累加CacheKey组合参数的hashCode
+    checksum += baseHashCode;
+    //扩大对象的hashCode为count倍
+    baseHashCode *= count;
+    //CacheKey的hashCode变为原hashCode*扩展系数（默认37）+此对象的hashCode
+    hashcode = multiplier * hashcode + baseHashCode;
+    updateList.add(object);
+  }
+</code></pre><p>　　说了这么多，那么一级缓存的性能如何呢？<br>　　从空间角度来看，一级缓存只是简单的使用的HashMap进行维护，并且没有对Has和Map的容量进行限制，这时候可能就有小伙伴会问了，这岂不是会占用很多内存吗，哪个渣渣写的代码，拖出去斩了=。=。MyBatis确实没在空间方面做硬性限制，但是呢在操作方式上其实还是有软限制的，一级缓存的生存周期是一个SqlSession会话，通常情况下每个request会新建一个SqlSession，一个request能执行多长时间（如果您的项目对SqlSession使用单例实现，请默默点击右上角的叉叉，笑），而且呢就算是这个SqlSession生活节奏比较慢，就是拖着不让回收也没问题，每次执行update操作的时候MyBatis会清空一次一级缓存，更极端点就算是这个死拖着不走的SqlSession全是查询操作，不还是可以手动清理缓存区的么（笑）。<br>从时间的角度看，MyBatis的一级缓存是粗粒度的，没有缓存过期的概念，也就是不会主动请求数据源对缓存进行更新，<br>由上面两点来看呢，一级缓存的一点不泛用性就展现出来了，对于数据变化的频率高，且对数据时效性要求高的业务来说就要控制每个SqlSession的生存时间了，时间越长缓存中的数据的准确性就越低了。</p>
+<h1 id="4-二级缓存"><a href="#4-二级缓存" class="headerlink" title="4. 二级缓存"></a>4. 二级缓存</h1><p>　　一级缓存是在一个SqlSession会话的周期内有效，那么不同的SqlSession想一起玩怎么办呢，这时候就用到了二级缓存。<br><img src="/images/mybatis_13.png" alt=""></p>
+<p>二级缓存简单来说就是在Configuration中维护的一个HashMap集合，MyBatis默认使用的和一级缓存一样是PerpetualCache这个实现（只不过使用TransactionalCache装饰了一下），与一级缓存不同，二级缓存是需要手动开启的，要使用二级缓存需要以下两个步骤：</p>
+<ul>
+<li><p>配置config.xml：</p>
+  <setting name="cacheEnabled" value="true">
+</setting></li>
+<li><p>配置mapper.xml：</p>
+<p>  <cache></cache><cache-ref namespace="daoMapper.UserMapper"></cache-ref></p>
+</li>
+</ul>
+<p>由上面可知，mapper有两种配置方式，其中cache标签是声明此mapper使用二级缓存，具体参数如下：</p>
+<ul>
+<li>eviction：缓存刷新机制，默认可用的回收策略有四种，LRU（清理最近最少使用的缓存）、FIFO（先进先出）、SOFT（ 软引用:移除基于垃圾回收器状态和软引用规则的对象）和WEAK（更积极地移除基于垃圾收集器状态和弱引用规则的对象。）</li>
+<li>flushInterval：刷新间隔，可以被设置为任意的正整数,而且它们代表一个合理的毫秒 形式的时间段。默认情况是不设置,也就是没有刷新间隔,缓存仅仅调用语句时刷新。</li>
+<li>size：引用数目，可以被设置为任意正整数,要记住你缓存的对象数目和你运行环境的 可用内存资源数目。默认值是 1024。</li>
+<li>readOnly：只读属性，可以被设置为 true 或 false。只读的缓存会给所有调用者返回缓 存对象的相同实例。因此这些对象不能被修改。这提供了很重要的性能优势。可读写的缓存 会返回缓存对象的拷贝(通过序列化) 。这会慢一些,但是安全,因此默认是 false。</li>
+</ul>
+<p>一级缓存是在BaseExecutor中进行操作，那二级缓存想要在一级之前调用自然就要在上一级了，MyBatis采用的是装饰器模式，当cacheEnabled设置为true时，默认创建的Executor实例都会用cacheEnabled进行装饰，下面看下cacheEnabled的查询源码：</p>
+<pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
+     throws SQLException {
+   Cache cache = ms.getCache();
+   if (cache != null) {
+     //根据flushCache参数决定是否刷新缓存区
+     flushCacheIfRequired(ms);
+     if (ms.isUseCache() &amp;&amp; resultHandler == null) {
+       //校验boundSql中的绑定参数列表是否包含输出参数，如果包含则抛出异常，Mybatis不支持存储过程结果缓存
+       ensureNoOutParams(ms, parameterObject, boundSql);
+       @SuppressWarnings(&quot;unchecked&quot;)
+       //从缓存中获取MappedStatement对应的查询结果
+       List&lt;E&gt; list = (List&lt;E&gt;) tcm.getObject(cache, key);
+       if (list == null) {
+         //如果没有缓存实例，则调用delegate执行query，并将结果放入缓存区
+         list = delegate.&lt;E&gt; query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+         tcm.putObject(cache, key, list); // issue #578 and #116
+       }
+       return list;
+     }
+   }
+   //如果MappedStatement配置不使用缓存则直接调用delegate进行查询
+   return delegate.&lt;E&gt; query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+ }
+</code></pre><p>这里的List<e> list = (List<e>) tcm.getObject(cache, key);是重点，画一下，考试要考，咳咳。<br>此处可以看出cache其实是从MappedStatement中取出的，正是因为MappedStatement在MyBatis初始化时就全部创建完毕，所以不会和SqlSession的生命周期挂钩。下面看下之后的方法：</e></e></p>
+<pre><code>public Object getObject(Cache cache, CacheKey key) {
+    return getTransactionalCache(cache).getObject(key);
+  }
+private TransactionalCache getTransactionalCache(Cache cache) {
+    TransactionalCache txCache = transactionalCaches.get(cache);
+    //如果此SqlSession的缓存集合中不包含cache，则创建cache的装饰类TransactionalCache并放入transactionalCaches中
+    if (txCache == null) {
+      txCache = new TransactionalCache(cache);
+      transactionalCaches.put(cache, txCache);
+    }
+    return txCache;
+  }
+  public Object getObject(Object key) {
+    // 此处实际调用的是默认实现PerpetualCache的getObject方法
+    Object object = delegate.getObject(key);
+    if (object == null) {
+      //此处是将缓存缓存的key放入缓存队列中，并没有直接放入二级缓存，只有调用commit方法才会将队列中的key依次放入二级缓存
+      entriesMissedInCache.add(key);
+    }
+    // issue #146
+    if (clearOnCommit) {
+      return null;
+    } else {
+      return object;
+    }
+  }
+</code></pre><p>上面说了二级缓存是从MappedStatement取出的，那么现在就来找一下二级缓存是如何创建的，之前讲创建SqlSessionFactory的过程时有提到过解析xml配置文件的方法，既然二级缓存的开关是在mapper.xml文件中，那么创建二级缓存的入口自然要落在解析mapper的方法中，下面来看下源码：</p>
+<pre><code>private void cacheElement(XNode context) throws Exception {
+    if (context != null) {
+      //自定义缓存类型
+      String type = context.getStringAttribute(&quot;type&quot;, &quot;PERPETUAL&quot;);
+      Class&lt;? extends Cache&gt; typeClass = typeAliasRegistry.resolveAlias(type);
+      //缓存过期类型装饰类
+      String eviction = context.getStringAttribute(&quot;eviction&quot;, &quot;LRU&quot;);
+      Class&lt;? extends Cache&gt; evictionClass = typeAliasRegistry.resolveAlias(eviction);
+      //缓存刷新间隔
+      Long flushInterval = context.getLongAttribute(&quot;flushInterval&quot;);
+      //引用数量
+      Integer size = context.getIntAttribute(&quot;size&quot;);
+      //是否只读
+      boolean readWrite = !context.getBooleanAttribute(&quot;readOnly&quot;, false);
+      boolean blocking = context.getBooleanAttribute(&quot;blocking&quot;, false);
+      //cache标签张配置的propertie属性
+      Properties props = context.getChildrenAsProperties();
+      //创建缓存对象
+      builderAssistant.useNewCache(typeClass, evictionClass, flushInterval, size, readWrite, blocking, props);
+    }
+  }
+public Cache useNewCache(Class&lt;? extends Cache&gt; typeClass,
+      Class&lt;? extends Cache&gt; evictionClass,
+      Long flushInterval,
+      Integer size,
+      boolean readWrite,
+      boolean blocking,
+      Properties props) {
+    //创建缓存对象
+    Cache cache = new CacheBuilder(currentNamespace)
+        .implementation(valueOrDefault(typeClass, PerpetualCache.class))
+        .addDecorator(valueOrDefault(evictionClass, LruCache.class))
+        .clearInterval(flushInterval)
+        .size(size)
+        .readWrite(readWrite)
+        .blocking(blocking)
+        .properties(props)
+        .build();
+    //将缓存对象添加至caches
+    configuration.addCache(cache);
+    //此处留待之后创建MappedStatement使用
+    currentCache = cache;
+    return cache;
+  }
+public Cache build() {
+    //设置默认实现类PerpetualCache和装饰类LruCache
+    setDefaultImplementations();
+    //创建PerpetualCache实例
+    Cache cache = newBaseCacheInstance(implementation, id);
+    //设置propertie属性
+    setCacheProperties(cache);
+    if (PerpetualCache.class.equals(cache.getClass())) {
+      //装饰者
+      for (Class&lt;? extends Cache&gt; decorator : decorators) {
+        cache = newCacheDecoratorInstance(decorator, cache);
+        setCacheProperties(cache);
+      }
+      //根据flushInterval，readOnly，blocking属性装饰缓存
+      cache = setStandardDecorators(cache);
+    } else if (!LoggingCache.class.isAssignableFrom(cache.getClass())) {
+      cache = new LoggingCache(cache);
+    }
+    return cache;
+  }
+</code></pre><p>　　如果不想使用MyBatis默认的二级缓存实现，也可以接入第三方缓存，如redis等，或者自定义cache的实现类。<br>　　二级缓存有很多优点，但是也存在很大的局限性，那就是二级缓存只适合单表，而且这个表的操作都在同一个mapper中定义，因为如果多个mapper都可以操作同一张表，那么缓存中的数据的准确性就无<br>法保证，多表查询的缓存也是同理。<br>　　如果实在是想用二级缓存处理多表的数据也不是没有办法，使用拦截器将涉及的所有mapper的缓存全部刷新就可以保证数据的准确性，不过编写这样一个插件还要保证插件的兼容性、可扩展性、稳定性都<br>达到上线的水准还不如在设计的时候就避免这种坑了。</p>
+]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_7]]></title>
+      <title><![CDATA[MyBatis源码解析：ParameterHandler]]></title>
       <url>/2017/06/15/mybatis-7/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>　　之前在Statementhandler中有一个成员变量叫ParameterHandler，这个就是第二个苦力（负责绑定参数）了，MyBatis中ParameterHandler只有一个默认实现，下面看一下绑定参数方法的源码：<br><a id="more"></a></p>
+<pre><code>public void setParameters(PreparedStatement ps) {
+    ErrorContext.instance().activity(&quot;setting parameters&quot;).object(mappedStatement.getParameterMap().getId());
+    //获取sql对象中的参数集合
+    List&lt;ParameterMapping&gt; parameterMappings = boundSql.getParameterMappings();
+    if (parameterMappings != null) {
+      for (int i = 0; i &lt; parameterMappings.size(); i++) {
+        //获取参数对象
+        ParameterMapping parameterMapping = parameterMappings.get(i);
+        //存储过程的输出参数在之前的CallableStatementHandler中绑定，此处不在赘述
+        if (parameterMapping.getMode() != ParameterMode.OUT) {
+          Object value;
+          String propertyName = parameterMapping.getProperty();
+          //获取需绑定参数的值
+          if (boundSql.hasAdditionalParameter(propertyName)) { 
+            value = boundSql.getAdditionalParameter(propertyName);
+          } else if (parameterObject == null) {
+            value = null;
+          } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
+            value = parameterObject;
+          } else {
+            MetaObject metaObject = configuration.newMetaObject(parameterObject);
+            value = metaObject.getValue(propertyName);
+          }
+          //获取此参数对应的类型处理器
+          TypeHandler typeHandler = parameterMapping.getTypeHandler();
+          JdbcType jdbcType = parameterMapping.getJdbcType();
+          //如果参数值和jdbc类型为null，则此参数使用配置中指定的null类型表示，默认为JdbcType.OTHER
+          if (value == null &amp;&amp; jdbcType == null) {
+            jdbcType = configuration.getJdbcTypeForNull();
+          }
+          try {
+            //将参数绑定到PreparedStatement
+            typeHandler.setParameter(ps, i + 1, value, jdbcType);
+          } catch (TypeException e) {
+            throw new TypeException(&quot;Could not set parameters for mapping: &quot; + parameterMapping + &quot;. Cause: &quot; + e, e);
+          } catch (SQLException e) {
+            throw new TypeException(&quot;Could not set parameters for mapping: &quot; + parameterMapping + &quot;. Cause: &quot; + e, e);
+          }
+        }
+      }
+    }
+  }
+</code></pre>]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_6]]></title>
+      <title><![CDATA[MyBatis源码解析：ResultSetHandler]]></title>
       <url>/2017/06/15/mybatis-6/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>　　现在要说第三个苦力ResultSetHandler（负责处理结果集映射）了，还记得在mapper配置中有一个标签叫resultMap，还有一个叫resultType，这两个标签就是这个时候用的了。<br>　　ResultSetHandler接口只有一个默认的实现类，下面我们来看看关键的几个方法：<br><a id="more"></a><br>    /**</p>
+<pre><code>   * 依照配置的返回类型映射查询结果集
+   */
+  @Override
+  public List&lt;Object&gt; handleResultSets(Statement stmt) throws SQLException {
+    ErrorContext.instance().activity(&quot;handling results&quot;).object(mappedStatement.getId());
+
+    final List&lt;Object&gt; multipleResults = new ArrayList&lt;Object&gt;();
+
+    //已处理结果行数
+    int resultSetCount = 0;
+    //ResultSetWrapper是ResultSet的包装类
+    ResultSetWrapper rsw = getFirstResultSet(stmt);
+
+    //获取结果集
+    List&lt;ResultMap&gt; resultMaps = mappedStatement.getResultMaps();
+    int resultMapCount = resultMaps.size();
+    //判断是否有结果集，没有则抛出异常
+    validateResultMapsCount(rsw, resultMapCount);
+    while (rsw != null &amp;&amp; resultMapCount &gt; resultSetCount) {
+      ResultMap resultMap = resultMaps.get(resultSetCount);
+      //映射结果集
+      handleResultSet(rsw, resultMap, multipleResults, null);
+      //如果有多个结果集时，此处rsw不为null
+      rsw = getNextResultSet(stmt);
+      //清空缓存池
+      cleanUpAfterHandlingResultSet();
+      resultSetCount++;
+    }
+
+    String[] resultSets = mappedStatement.getResultSets();
+    if (resultSets != null) {
+      //当存在多个结果集时执行以下逻辑
+      while (rsw != null &amp;&amp; resultSetCount &lt; resultSets.length) {
+        ResultMapping parentMapping = nextResultMaps.get(resultSets[resultSetCount]);
+        if (parentMapping != null) {
+          //获取嵌套结果集id
+          String nestedResultMapId = parentMapping.getNestedResultMapId();
+          //从一级缓存中获取结果集
+          ResultMap resultMap = configuration.getResultMap(nestedResultMapId);
+          //绑定子结果集，此处的parentMapping为父级结果集
+          handleResultSet(rsw, resultMap, null, parentMapping);
+        }
+        //获取下一个结果集
+        rsw = getNextResultSet(stmt);
+        //清空缓存池
+        cleanUpAfterHandlingResultSet();
+        resultSetCount++;
+      }
+    }
+
+    return collapseSingleResultList(multipleResults);
+  }
+
+/**
+   * 按照规则映射结果集数据
+   */
+  private void handleResultSet(ResultSetWrapper rsw, ResultMap resultMap, List&lt;Object&gt; multipleResults, ResultMapping parentMapping) throws SQLException {
+    try {
+      //parentMapping不为空是指嵌套结果集，在mapper配置中的resultMap标签控制
+      if (parentMapping != null) {
+        handleRowValues(rsw, resultMap, null, RowBounds.DEFAULT, parentMapping);
+      } else {
+        if (resultHandler == null) {//有多个结果集
+          //创建一个默认的结果集对象
+          DefaultResultHandler defaultResultHandler = new DefaultResultHandler(objectFactory);
+          //将查询结果按照字段与bean属性对应关系进行绑定
+          handleRowValues(rsw, resultMap, defaultResultHandler, rowBounds, null);
+          //将结果集添加到multipleResults末尾
+          multipleResults.add(defaultResultHandler.getResultList());
+        } else {//简单结果集
+          handleRowValues(rsw, resultMap, resultHandler, rowBounds, null);
+        }
+      }
+    } finally {
+      // issue #228 (close resultsets)
+      closeResultSet(rsw.getResultSet());
+    }
+  }
+/**
+   * 映射数据
+   */
+  public void handleRowValues(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
+    if (resultMap.hasNestedResultMaps()) {
+      ensureNoRowBounds();
+      checkResultHandler();
+      //嵌套的结果集
+      handleRowValuesForNestedResultMap(rsw, resultMap, resultHandler, rowBounds, parentMapping);
+    } else {
+      //普通的结果集
+      handleRowValuesForSimpleResultMap(rsw, resultMap, resultHandler, rowBounds, parentMapping);
+    }
+  }
+/**
+  * 映射嵌套结果集
+  */
+  private void handleRowValuesForNestedResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
+    //创建结果集上下文对象
+    final DefaultResultContext&lt;Object&gt; resultContext = new DefaultResultContext&lt;Object&gt;();
+    //跳过rowBounds指定offset行偏移量
+    skipRows(rsw.getResultSet(), rowBounds);
+    //前一行数据
+    Object rowValue = previousRowValue;
+    while (shouldProcessMoreRows(resultContext, rowBounds) &amp;&amp; rsw.getResultSet().next()) {
+      //鉴别器通过制定字段获取另一个结果的映射
+      final ResultMap discriminatedResultMap = resolveDiscriminatedResultMap(rsw.getResultSet(), resultMap, null);
+      //获取结果集的唯一key
+      final CacheKey rowKey = createRowKey(discriminatedResultMap, rsw, null);
+      //从缓存中获取key对应的结果对象
+      Object partialObject = nestedResultObjects.get(rowKey);
+      //获取配置项resultOrdered，是否为嵌套结果集。
+      if (mappedStatement.isResultOrdered()) {
+        if (partialObject == null &amp;&amp; rowValue != null) {
+          nestedResultObjects.clear();
+          //存储结果对象
+          storeObject(resultHandler, resultContext, rowValue, parentMapping, rsw.getResultSet());
+        }
+        //获取行值
+        rowValue = getRowValue(rsw, discriminatedResultMap, rowKey, null, partialObject);
+      } else {
+        rowValue = getRowValue(rsw, discriminatedResultMap, rowKey, null, partialObject);
+        if (partialObject == null) {
+          storeObject(resultHandler, resultContext, rowValue, parentMapping, rsw.getResultSet());
+        }
+      }
+    }
+    if (rowValue != null &amp;&amp; mappedStatement.isResultOrdered() &amp;&amp; shouldProcessMoreRows(resultContext, rowBounds)) {
+      storeObject(resultHandler, resultContext, rowValue, parentMapping, rsw.getResultSet());
+      previousRowValue = null;
+    } else if (rowValue != null) {
+      previousRowValue = rowValue;
+    }
+  }
+/**
+   * 简单结果集的绑定行数据方法
+   */
+  private void handleRowValuesForSimpleResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping)
+      throws SQLException {
+    DefaultResultContext&lt;Object&gt; resultContext = new DefaultResultContext&lt;Object&gt;();
+    //跳过rowBounds指定offset行偏移量
+    skipRows(rsw.getResultSet(), rowBounds);
+    while (shouldProcessMoreRows(resultContext, rowBounds) &amp;&amp; rsw.getResultSet().next()) {
+      ResultMap discriminatedResultMap = resolveDiscriminatedResultMap(rsw.getResultSet(), resultMap, null);
+      //获取一行数据
+      Object rowValue = getRowValue(rsw, discriminatedResultMap);
+      //存储数据对象
+      storeObject(resultHandler, resultContext, rowValue, parentMapping, rsw.getResultSet());
+    }
+  }
+</code></pre>]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_5]]></title>
+      <title><![CDATA[MyBatis源码解析：StatementHandler]]></title>
       <url>/2017/06/15/mybatis-5/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>上文说到Executor是Mybatis的执行者，Mybatis为了防止工作量太大而暴走就准备了几个苦力供他差遣。</p>
+<ul>
+<li>StatementHandler：负责生产statement实例以及监督statement执行sql操作。</li>
+<li>ParameterHandler：负责绑定参数。</li>
+<li>ResultSetHandler：负责处理结果集</li>
+</ul>
+<a id="more"></a>
+<p>本次先说说StatementHandler这个苦力。下团是StatementHandler的家族体系：<br><img src="/images/mybatis_8.png" alt=""></p>
+<p>　　可以看出StatementHandler和他的带头大哥一样是使用的模板模式，下面就先看下这个模板类BaseStatementHandler。</p>
+<h1 id="1-BaseStatementHandler"><a href="#1-BaseStatementHandler" class="headerlink" title="1. BaseStatementHandler"></a>1. BaseStatementHandler</h1><p>　　BaseStatementHandler需要关注的方法只有一个，下面来看下源码：</p>
+<pre><code>public Statement prepare(Connection connection, Integer transactionTimeout) throws SQLException {
+    ErrorContext.instance().sql(boundSql.getSql());
+    Statement statement = null;
+    try {
+      //实例化statement，由子类进行差异化实现
+      statement = instantiateStatement(connection);
+      //设置statement超时时间
+      setStatementTimeout(statement, transactionTimeout);
+      //设置每次返回的结果集大小，取决于xml中的fetchSize值
+      setFetchSize(statement);
+      return statement;
+    } catch (SQLException e) {
+      closeStatement(statement);
+      throw e;
+    } catch (Exception e) {
+      closeStatement(statement);
+      throw new ExecutorException(&quot;Error preparing statement.  Cause: &quot; + e, e);
+    }
+  }
+</code></pre><h1 id="2-SimpleStatementHandler"><a href="#2-SimpleStatementHandler" class="headerlink" title="2. SimpleStatementHandler"></a>2. SimpleStatementHandler</h1><p>　　一看名字就知道了，这是执行简单sql小分队的苦力，正好用来举例，先来看看CRUD方法：</p>
+<pre><code>public int update(Statement statement) throws SQLException {
+    //获取sql
+    String sql = boundSql.getSql();
+    //获取参数对象
+    Object parameterObject = boundSql.getParameterObject();
+    //获取主键生产器
+    KeyGenerator keyGenerator = mappedStatement.getKeyGenerator();
+    int rows;
+    //根据KeyGenerator的具体类型决定是否返回修改数据的主键，具体逻辑放在KeyGenerator中讲解
+    if (keyGenerator instanceof Jdbc3KeyGenerator) {
+      statement.execute(sql, Statement.RETURN_GENERATED_KEYS);
+      //获取修改行数
+      rows = statement.getUpdateCount();
+      //将返回的主键信息添加到parameterObject中
+      keyGenerator.processAfter(executor, mappedStatement, statement, parameterObject);
+    } else if (keyGenerator instanceof SelectKeyGenerator) {
+      statement.execute(sql);
+      rows = statement.getUpdateCount();
+      keyGenerator.processAfter(executor, mappedStatement, statement, parameterObject);
+    } else {
+      statement.execute(sql);
+      rows = statement.getUpdateCount();
+    }
+    return rows;
+  }
+public void batch(Statement statement) throws SQLException {
+    //获取sql
+    String sql = boundSql.getSql();
+    //执行批处理
+    statement.addBatch(sql);
+  }
+public &lt;E&gt; List&lt;E&gt; query(Statement statement, ResultHandler resultHandler) throws SQLException {
+    //获取sql
+    String sql = boundSql.getSql();
+    //执行查询
+    statement.execute(sql);
+    //处理结果集
+    return resultSetHandler.&lt;E&gt;handleResultSets(statement);
+  }
+public &lt;E&gt; Cursor&lt;E&gt; queryCursor(Statement statement) throws SQLException {
+    //获取sql
+    String sql = boundSql.getSql();
+    //执行查询
+    statement.execute(sql);
+    //处理结果集
+    return resultSetHandler.&lt;E&gt;handleCursorResultSets(statement);
+  }
+  protected Statement instantiateStatement(Connection connection) throws SQLException {
+    if (mappedStatement.getResultSetType() != null) {
+//创建能返回指定类型的ResultSet的Statement实例
+      return connection.createStatement(mappedStatement.getResultSetType().getValue(), ResultSet.CONCUR_READ_ONLY);
+    } else {
+//创建普通Statement实例
+      return connection.createStatement();
+    }
+  }
+</code></pre><p>simple不愧simple之名，除了update稍微复杂点都很简单，需要注意的是SimpleStatementHandler中的parameterize方法是没有实现的，即不支持绑定参数。</p>
+<h1 id="3-PreparedStatementHandler"><a href="#3-PreparedStatementHandler" class="headerlink" title="3. PreparedStatementHandler"></a>3. PreparedStatementHandler</h1><p>　　这个是预编译小组的小伙伴，这个小伙伴和simple挺像，甚至update比simple还要简单，真不知道到底他俩谁才更像simple（笑），不过说归说这次的是有很大不同的，下面看下源码：</p>
+<pre><code>protected Statement instantiateStatement(Connection connection) throws SQLException {
+    //获取sql
+    String sql = boundSql.getSql();
+    if (mappedStatement.getKeyGenerator() instanceof Jdbc3KeyGenerator) {
+      //获取xml配置的指定列名
+      String[] keyColumnNames = mappedStatement.getKeyColumns();
+      if (keyColumnNames == null) {
+        //创建能返回自动生成键的PreparedStatement实例
+        return connection.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
+      } else {
+        //创建能返回指定数组指定的自动生成键的PreparedStatement实例
+        return connection.prepareStatement(sql, keyColumnNames);
+      }
+    } else if (mappedStatement.getResultSetType() != null) {
+      //创建能返回指定类型的ResultSet的PreparedStatement实例
+      return connection.prepareStatement(sql, mappedStatement.getResultSetType().getValue(), ResultSet.CONCUR_READ_ONLY);
+    } else {
+      //创建普通PreparedStatement实例
+      return connection.prepareStatement(sql);
+    }
+  }
+public int update(Statement statement) throws SQLException {
+    PreparedStatement ps = (PreparedStatement) statement;
+    //执行sql
+    ps.execute();
+    //获取修改的行数
+    int rows = ps.getUpdateCount();
+    //获取参数对象
+    Object parameterObject = boundSql.getParameterObject();
+    //获取主键生成器
+    KeyGenerator keyGenerator = mappedStatement.getKeyGenerator();
+    //将修改行的主键信息反写回parameterObject
+    keyGenerator.processAfter(executor, mappedStatement, ps, parameterObject);
+    return rows;
+  }
+public void parameterize(Statement statement) throws SQLException {
+    parameterHandler.setParameters((PreparedStatement) statement);
+  }
+</code></pre><h1 id="4-CallableStatementHandler"><a href="#4-CallableStatementHandler" class="headerlink" title="4. CallableStatementHandler"></a>4. CallableStatementHandler</h1><p>　　顾名思义这个就是处理存储过程的小伙伴了，他的修改. 查询方法与上面两位几乎相同就不在赘述了，下面看下不一样的地方：</p>
+<pre><code>protected Statement instantiateStatement(Connection connection) throws SQLException {
+    String sql = boundSql.getSql();
+    if (mappedStatement.getResultSetType() != null) {
+      //创建返回指定ResultSet类型的CallableStatement实例
+      return connection.prepareCall(sql, mappedStatement.getResultSetType().getValue(), ResultSet.CONCUR_READ_ONLY);
+    } else {
+      //创建CallableStatement实例
+      return connection.prepareCall(sql);
+    }
+  }
+
+public void parameterize(Statement statement) throws SQLException {
+    //注册输出参数
+    registerOutputParameters((CallableStatement) statement);
+    //绑定参数
+    parameterHandler.setParameters((CallableStatement) statement);
+  }
+
+  private void registerOutputParameters(CallableStatement cs) throws SQLException {
+    //获取参数集合
+    List&lt;ParameterMapping&gt; parameterMappings = boundSql.getParameterMappings();
+    for (int i = 0, n = parameterMappings.size(); i &lt; n; i++) {
+      //获取参数对象
+      ParameterMapping parameterMapping = parameterMappings.get(i);
+      //参数类型为输出参数时才会进行绑定
+      if (parameterMapping.getMode() == ParameterMode.OUT || parameterMapping.getMode() == ParameterMode.INOUT) {
+        //如果参数没有指定jdbc类型则抛出异常
+        if (null == parameterMapping.getJdbcType()) {
+          throw new ExecutorException(&quot;The JDBC Type must be specified for output parameter.  Parameter: &quot; + parameterMapping.getProperty());
+        } else {
+          //将指定位置的参数注册为jdbc类型
+          if (parameterMapping.getNumericScale() != null &amp;&amp; (parameterMapping.getJdbcType() == JdbcType.NUMERIC || parameterMapping.getJdbcType() == JdbcType.DECIMAL)) {
+            cs.registerOutParameter(i + 1, parameterMapping.getJdbcType().TYPE_CODE, parameterMapping.getNumericScale());
+          } else {
+            if (parameterMapping.getJdbcTypeName() == null) {
+              cs.registerOutParameter(i + 1, parameterMapping.getJdbcType().TYPE_CODE);
+            } else {
+              cs.registerOutParameter(i + 1, parameterMapping.getJdbcType().TYPE_CODE, parameterMapping.getJdbcTypeName());
+            }
+          }
+        }
+      }
+    }
+  }
+</code></pre><h1 id="5-RoutingStatementHandler"><a href="#5-RoutingStatementHandler" class="headerlink" title="5. RoutingStatementHandler"></a>5. RoutingStatementHandler</h1><p>　　MyBatis中默认实现的StatementHandler就是RoutingStatementHandler，RoutingStatementHandler并没有实现具体的业务逻辑，而是作为一个选择器的角色存在，通过配置中的设置决定实例化哪种子类</p>
+<pre><code>public RoutingStatementHandler(Executor executor, MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
+   switch (ms.getStatementType()) {
+     case STATEMENT:
+       delegate = new SimpleStatementHandler(executor, ms, parameter, rowBounds, resultHandler, boundSql);
+       break;
+     case PREPARED:
+       delegate = new PreparedStatementHandler(executor, ms, parameter, rowBounds, resultHandler, boundSql);
+       break;
+     case CALLABLE:
+       delegate = new CallableStatementHandler(executor, ms, parameter, rowBounds, resultHandler, boundSql);
+       break;
+     default:
+       throw new ExecutorException(&quot;Unknown statement type: &quot; + ms.getStatementType());
+   }
+ }
+</code></pre>]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
     <entry>
-      <title><![CDATA[mybatis_4]]></title>
+      <title><![CDATA[MyBatis源码解析：Executor]]></title>
       <url>/2017/06/15/mybatis-4/</url>
-      <content type="html"></content>
+      <content type="html"><![CDATA[<p>　　前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：<br><img src="/images/mybatis_7.png" alt=""><br><a id="more"></a></p>
+<h1 id="1-BaseExecutor"><a href="#1-BaseExecutor" class="headerlink" title="1. BaseExecutor"></a>1. BaseExecutor</h1><p>　　BaseExecutor实现了Executor接口的所有方法，采用了模板模式，为下面几个子类提供公共实现。首先看下update方法的源码：</p>
+<p> public int update(MappedStatement ms, Object parameter) throws SQLException {<br>    ErrorContext.instance().resource(ms.getResource()).activity(“executing an update”).object(ms.getId());<br>    //如果已经关闭则抛出异常<br>    if (closed) {<br>      throw new ExecutorException(“Executor was closed.”);<br>    }<br>    //执行更新操作会清空一级缓存<br>    clearLocalCache();<br>    //由子类做差异化实现<br>    return doUpdate(ms, parameter);<br>  }</p>
+<p>由上可见，update的模板方法比较简单，只是清空了以及缓存，外加关闭异常，具体的操作由子类的doUpdate实现决定。下面看下query方法的源码：</p>
+<pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+   //获取sql对象
+  BoundSql boundSql = ms.getBoundSql(parameter);
+  //获取缓存key
+   CacheKey key = createCacheKey(ms, parameter, rowBounds, boundSql);
+   return query(ms, parameter, rowBounds, resultHandler, key, boundSql);
+}
+</code></pre><p>此处首先获取MyBatis的sql对象BoundSql和缓存key，然后调用下面方法：</p>
+<pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
+    ErrorContext.instance().resource(ms.getResource()).activity(&quot;executing a query&quot;).object(ms.getId());
+    //如果已经关闭则抛出异常
+    if (closed) {
+      throw new ExecutorException(&quot;Executor was closed.&quot;);
+    }
+    //当查询堆栈为0且flushCacheRequired配置为true则刷新一级缓存区
+    if (queryStack == 0 &amp;&amp; ms.isFlushCacheRequired()) {
+      clearLocalCache();
+    }
+    List&lt;E&gt; list;
+    try {
+      queryStack++;
+      //根据参数中的resultHandler来判断是否从一级缓存中获取结果集，selectList方法传入的resultHandler默认为null
+      list = resultHandler == null ? (List&lt;E&gt;) localCache.getObject(key) : null;
+      if (list != null) {//缓存中存在结果集时
+        handleLocallyCachedOutputParameters(ms, key, parameter, boundSql);
+      } else {
+        //从数据库获取数据
+        list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
+      }
+    } finally {
+      queryStack--;
+    }
+    //当查询堆栈为0时加载延迟加载列表中的所有元素
+    if (queryStack == 0) {
+      for (DeferredLoad deferredLoad : deferredLoads) {
+        deferredLoad.load();
+      }
+      //清空延迟加载列表
+      deferredLoads.clear();
+      //如果设置的本地缓存等级为statement，则清空一级缓存
+      if (configuration.getLocalCacheScope() == LocalCacheScope.STATEMENT) {
+        clearLocalCache();
+      }
+    }
+    return list;
+  }
+private &lt;E&gt; List&lt;E&gt; queryFromDatabase(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
+    List&lt;E&gt; list;
+    //执行查询前用占位符在一级缓存中占位
+    localCache.putObject(key, EXECUTION_PLACEHOLDER);
+    try {
+      //具体查询方法，由子类进行差异化实现
+      list = doQuery(ms, parameter, rowBounds, resultHandler, boundSql);
+    } finally {
+      localCache.removeObject(key);
+    }
+    //将结果集放入一级缓存中
+    localCache.putObject(key, list);
+    //如果statement的类型为CALLABLE，在localOutputParameterCache中放入参数
+    if (ms.getStatementType() == StatementType.CALLABLE) {
+      localOutputParameterCache.putObject(key, parameter);
+    }
+    return list;
+  }
+</code></pre><p>由上述方法可见，query的具体实现方法是doQuery，也是由子类进行差异化实现。</p>
+<pre><code>public &lt;E&gt; Cursor&lt;E&gt; queryCursor(MappedStatement ms, Object parameter, RowBounds rowBounds) throws SQLException {
+    //获取sql对象
+    BoundSql boundSql = ms.getBoundSql(parameter);
+    return doQueryCursor(ms, parameter, rowBounds, boundSql);
+  }
+</code></pre><p>cursor是3.4版本新增的特性，用于以游标的方式返回结果，主要用于数据量很大的业务场景，会分批次读取数据，降低每次对数据库的占用时间。</p>
+<h1 id="2-SimpleExecutor"><a href="#2-SimpleExecutor" class="headerlink" title="2. SimpleExecutor"></a>2. SimpleExecutor</h1><p>　　简单sql执行器，不支持添加参数。这里用doQuery方法进行示例：</p>
+<pre><code>  public &lt;E&gt; List&lt;E&gt; doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
+    Statement stmt = null;
+    try {
+      //获取配置上下文
+      Configuration configuration = ms.getConfiguration();
+      //创建StatementHandler实例
+      StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
+      //创建statement实例，具体生成过程会放在StatementHandler模块讲解
+      stmt = prepareStatement(handler, ms.getStatementLog());
+      //具体执行操作
+      return handler.&lt;E&gt;query(stmt, resultHandler);
+    } finally {
+      closeStatement(stmt);
+    }
+  }
+private Statement prepareStatement(StatementHandler handler, Log statementLog) throws SQLException {
+    Statement stmt;
+    //获取数据库连接
+    Connection connection = getConnection(statementLog);
+    //创建statement实例
+    stmt = handler.prepare(connection, transaction.getTimeout());
+    //为statement实例绑定参数，（simple类型无方法体）
+    handler.parameterize(stmt);
+    return stmt;
+  }
+</code></pre><h1 id="3-ReuseExecutor"><a href="#3-ReuseExecutor" class="headerlink" title="3. ReuseExecutor"></a>3. ReuseExecutor</h1><p>　　可重复使用执行器，内部维护了一个Map<string, statement="">缓存池，在一个session生命周期内相同的statement只会实例化一次。与simple的主要差异在于下面两个方法</string,></p>
+<pre><code>public List&lt;BatchResult&gt; doFlushStatements(boolean isRollback) throws SQLException {
+    //遍历statement缓存池，依次关闭
+    for (Statement stmt : statementMap.values()) {
+      closeStatement(stmt);
+    }
+    //清空缓存池
+    statementMap.clear();
+    return Collections.emptyList();
+  }
+ private Statement prepareStatement(StatementHandler handler, Log statementLog) throws SQLException {
+    Statement stmt;
+    //获取sql对象
+    BoundSql boundSql = handler.getBoundSql();
+    String sql = boundSql.getSql();
+    //判断缓存池中是否有此sql的statement实例
+    if (hasStatementFor(sql)) {
+      //获取缓存池中的statement实例
+      stmt = getStatement(sql);
+      //设置事务过期时间
+      applyTransactionTimeout(stmt);
+    } else {
+      //缓存池中没有此sql的statement实例时，通过StatementHandler创建新实例
+      Connection connection = getConnection(statementLog);
+      stmt = handler.prepare(connection, transaction.getTimeout());
+      //将statement实例放入缓存池
+      putStatement(sql, stmt);
+    }
+    //为statement绑定参数
+    handler.parameterize(stmt);
+    return stmt;
+  }
+</code></pre><h1 id="4-BatchExecutor"><a href="#4-BatchExecutor" class="headerlink" title="4. BatchExecutor"></a>4. BatchExecutor</h1><p>批处理执行器，BatchExecutor内维护了四个变量，分别是</p>
+<ul>
+<li>statementList：statement执行队列</li>
+<li>batchResultList：结果集队列</li>
+<li>currentSql：上次执行sql</li>
+<li>currentStatement：上次执行MappedStatement</li>
+</ul>
+<p>批处理的doQuery方法与simple的差别只在于会清空上述四个变量的值，批处理特性主要体现在doUpdate和doFlushStatements这两个方法中：</p>
+<pre><code>public int doUpdate(MappedStatement ms, Object parameterObject) throws SQLException {
+    //获取配置上下文
+    final Configuration configuration = ms.getConfiguration();
+    //创建StatementHandler实例
+    final StatementHandler handler = configuration.newStatementHandler(this, ms, parameterObject, RowBounds.DEFAULT, null, null);
+    //从MappedStatement中获取sql对象
+    final BoundSql boundSql = handler.getBoundSql();
+    final String sql = boundSql.getSql();
+    final Statement stmt;
+    //判断本次执行sql是否与上次执行sql相同
+    if (sql.equals(currentSql) &amp;&amp; ms.equals(currentStatement)) {
+      int last = statementList.size() - 1;
+      //获取上次使用的Statement实例
+      stmt = statementList.get(last);
+      //刷新事务过期时间
+      applyTransactionTimeout(stmt);
+      //为Statement绑定新参数
+      handler.parameterize(stmt);
+      //将参数对象添加至BatchResult对象中（BatchResult中维护了一个参数List）
+      BatchResult batchResult = batchResultList.get(last);
+      batchResult.addParameterObject(parameterObject);
+    } else {
+      //获取新的数据库连接实例
+      Connection connection = getConnection(ms.getStatementLog());
+      //创建Statement实例
+      stmt = handler.prepare(connection, transaction.getTimeout());
+      //为Statement绑定参数
+      handler.parameterize(stmt); 
+      //刷新上次执行sql以及Statement，为下次判断做准备
+      currentSql = sql;
+      currentStatement = ms;
+      statementList.add(stmt);
+      //在结果集队列中添加BatchResult对象实例
+      batchResultList.add(new BatchResult(ms, sql, parameterObject));
+    }
+    handler.batch(stmt);
+    //批处理执行器的更新操作不会返回修改行数，而是返回一个固定的数字，此处需要注意！
+    return BATCH_UPDATE_RETURN_VALUE;
+  }
+public List&lt;BatchResult&gt; doFlushStatements(boolean isRollback) throws SQLException {
+    try {
+      List&lt;BatchResult&gt; results = new ArrayList&lt;BatchResult&gt;();
+      //如果rollback则返回空集
+      if (isRollback) {
+        return Collections.emptyList();
+      }
+      for (int i = 0, n = statementList.size(); i &lt; n; i++) {
+        //从statement队列中获取statement实例
+        Statement stmt = statementList.get(i);
+        //设置事务超时时间
+        applyTransactionTimeout(stmt);
+        //从结果集队列中获取BatchResult实例，结果集队列与上面statement队列是一一对应关系
+        BatchResult batchResult = batchResultList.get(i);
+        try {
+          //设置本次操作修改的行数（int数组形式）,需要注意的是多次执行相同的修改sql时，结果信息会保存在同一个BatchResult实例中
+          batchResult.setUpdateCounts(stmt.executeBatch());
+          MappedStatement ms = batchResult.getMappedStatement();
+          List&lt;Object&gt; parameterObjects = batchResult.getParameterObjects();
+          KeyGenerator keyGenerator = ms.getKeyGenerator();
+          //此处是回写字段逻辑，如果在xml中配置了需要回写的字段，则会调用KeyGenerator进行回写，具体逻辑在KeyGenerator讲解
+          if (Jdbc3KeyGenerator.class.equals(keyGenerator.getClass())) {
+            Jdbc3KeyGenerator jdbc3KeyGenerator = (Jdbc3KeyGenerator) keyGenerator;
+            jdbc3KeyGenerator.processBatch(ms, stmt, parameterObjects);
+          } else if (!NoKeyGenerator.class.equals(keyGenerator.getClass())) { 
+            for (Object parameter : parameterObjects) {
+              keyGenerator.processAfter(this, ms, stmt, parameter);
+            }
+          }
+        } catch (BatchUpdateException e) {
+          StringBuilder message = new StringBuilder();
+          message.append(batchResult.getMappedStatement().getId())
+              .append(&quot; (batch index #&quot;)
+              .append(i + 1)
+              .append(&quot;)&quot;)
+              .append(&quot; failed.&quot;);
+          if (i &gt; 0) {
+            message.append(&quot; &quot;)
+                .append(i)
+                .append(&quot; prior sub executor(s) completed successfully, but will be rolled back.&quot;);
+          }
+          throw new BatchExecutorException(message.toString(), e, results, batchResult);
+        }
+        results.add(batchResult);
+      }
+      return results;
+    } finally {
+      //清空批处理队列
+      for (Statement stmt : statementList) {
+        closeStatement(stmt);
+      }
+      currentSql = null;
+      statementList.clear();
+      batchResultList.clear();
+    }
+  }
+</code></pre><h1 id="5-CachingExecutor"><a href="#5-CachingExecutor" class="headerlink" title="5. CachingExecutor"></a>5. CachingExecutor</h1><p>　　缓存执行器，顾名思义这种执行器内部必定维护了一个缓存区，也主要针对于查询语句，具体代码如下：</p>
+<pre><code> //实际的操作执行器
+  private Executor delegate;
+  //缓存容器，缓存实体TransactionalCache实现了Cache接口
+  private TransactionalCacheManager tcm = new TransactionalCacheManager();
+public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
+      throws SQLException {
+    Cache cache = ms.getCache();
+    if (cache != null) {
+      //根据flushCache参数决定是否刷新缓存区
+      flushCacheIfRequired(ms);
+      if (ms.isUseCache() &amp;&amp; resultHandler == null) {
+        //如果执行存储过程，校验boundSql中的绑定参数列表是否包含输出参数，如果包含则抛出异常
+        ensureNoOutParams(ms, parameterObject, boundSql);
+        @SuppressWarnings(&quot;unchecked&quot;)
+        //从缓存中获取MappedStatement对应的查询结果
+        List&lt;E&gt; list = (List&lt;E&gt;) tcm.getObject(cache, key);
+        if (list == null) {
+          //如果没有缓存实例，则调用delegate执行query，并将结果放入缓存区
+          list = delegate.&lt;E&gt; query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+          tcm.putObject(cache, key, list); // issue #578 and #116
+        }
+        return list;
+      }
+    }
+    //如果MappedStatement配置不使用缓存则直接调用delegate进行查询
+    return delegate.&lt;E&gt; query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+  }
+</code></pre>]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     
@@ -222,11 +2352,9 @@ public &lt;T&gt; T getMapper(Class&lt;T&gt; type, SqlSession sqlSession) {
     </entry>
     
     <entry>
-      <title></title>
+      <title><![CDATA[MyBatis源码解析：SqlSessionFactory]]></title>
       <url>/2017/06/15/mybatis-2/</url>
-      <content type="html"><![CDATA[<hr>
-<p>title: MyBatis源码解析：SqlSessionFactory<br>date: 2017-06-15 15:16:31<br>tags: MyBatis<br>—　</p>
-<p>　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。<br>SqlSessionFactory接口定义了生成SqlSession实例的几种两种方式，MyBatis中有两个默认实现DefaultSqlSessionFactory和SqlSessionManager。SqlSessionManager貌似已经废弃，此处不再写。<br><a id="more"></a><br>　　DefaultSqlSessionFactory内部维护了一个Configuration实例，Configuration中的配置属性是生成SqlSession实例的关键。下面是DefaultSqlSessionFactory的OutLine图：<br><img src="/images/mybatis_5.png" alt=""></p>
+      <content type="html"><![CDATA[<p>　　使用MyBatis框架时，首先要使用SqlSessionFactoryBuilder.build方法来实例化一个SqlSessionFactory，SqlSessionFactory相当于一个数据库连接工厂。<br>SqlSessionFactory接口定义了生成SqlSession实例的几种两种方式，MyBatis中有两个默认实现DefaultSqlSessionFactory和SqlSessionManager。SqlSessionManager貌似已经废弃，此处不再写。<br><a id="more"></a><br>　　DefaultSqlSessionFactory内部维护了一个Configuration实例，Configuration中的配置属性是生成SqlSession实例的关键。下面是DefaultSqlSessionFactory的OutLine图：<br><img src="/images/mybatis_5.png" alt=""></p>
 <p>看似很多种重载方法，但是实际执行的只有两个</p>
 <ul>
 <li>openSessionFromDataSource(ExecutorType execType, TransactionIsolationLevel level, boolean autoCommit)</li>
@@ -255,6 +2383,12 @@ public &lt;T&gt; T getMapper(Class&lt;T&gt; type, SqlSession sqlSession) {
 }　
 </code></pre>]]></content>
       
+        
+        <tags>
+            
+            <tag> MyBatis </tag>
+            
+        </tags>
         
     </entry>
     

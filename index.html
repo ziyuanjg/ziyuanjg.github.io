@@ -258,63 +258,6 @@
 </nav>
       <div class="body-wrap">
   
-    <article id="post-mybatis-13" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a  href="/2017/06/15/mybatis-13/" class="article-date">
-      <time datetime="2017-06-15T07:17:14.000Z" itemprop="datePublished">2017-06-15</time>
-</a>
-
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-13/">mybatis_13</a>
-    </h1>
-  
-
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-          
-        
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-
-      
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-
-
-  
     <article id="post-mybatis-12" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
@@ -333,7 +276,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-12/">mybatis_12</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a>
     </h1>
   
 
@@ -344,7 +287,8 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <h1 id="1-MyBatis中和动态SQl相关的类"><a href="#1-MyBatis中和动态SQl相关的类" class="headerlink" title="1. MyBatis中和动态SQl相关的类"></a>1. MyBatis中和动态SQl相关的类</h1><h2 id="1-1-BaseBuilder"><a href="#1-1-BaseBuilder" class="headerlink" title="1.1. BaseBuilder"></a>1.1. BaseBuilder</h2><p><img src="/images/mybatis_24.png" alt=""><br>
+          
       
     </div>
     
@@ -353,6 +297,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-12/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -390,7 +342,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-11/">mybatis_11</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a>
     </h1>
   
 
@@ -401,7 +353,9 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>　　Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。</p>
+<h1 id="1-Plugin可以做什么"><a href="#1-Plugin可以做什么" class="headerlink" title="1. Plugin可以做什么"></a>1. Plugin可以做什么</h1><p>　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。<br>
+          
       
     </div>
     
@@ -410,6 +364,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-11/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -447,7 +409,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-10/">mybatis_10</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a>
     </h1>
   
 
@@ -458,7 +420,8 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>　　MyBatis作为一款ORM框架，反射是必不可少的一环，reflection就是MyBatis的反射模块。从代码角度来看reflection包相当的独立，除了jdk之外没有其他的包外引用，完全可以单独提取出来作为工具使用。<br><img src="/images/mybatis_18.png" alt=""><br>
+          
       
     </div>
     
@@ -467,6 +430,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-10/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -504,7 +475,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-9/">mybatis_9</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a>
     </h1>
   
 
@@ -515,7 +486,9 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>　　MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。</p>
+<h1 id="1-DataSource的三种类型"><a href="#1-DataSource的三种类型" class="headerlink" title="1. DataSource的三种类型"></a>1. DataSource的三种类型</h1><p>MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。<br>
+          
       
     </div>
     
@@ -524,6 +497,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-9/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -561,7 +542,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-8/">mybatis_8</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a>
     </h1>
   
 
@@ -572,7 +553,9 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>　　俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。</p>
+<h1 id="1-缓存的作用"><a href="#1-缓存的作用" class="headerlink" title="1. 缓存的作用"></a>1. 缓存的作用</h1><p>　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。<br>
+          
       
     </div>
     
@@ -581,6 +564,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-8/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -618,7 +609,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-7/">mybatis_7</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a>
     </h1>
   
 
@@ -629,7 +620,8 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>　　之前在Statementhandler中有一个成员变量叫ParameterHandler，这个就是第二个苦力（负责绑定参数）了，MyBatis中ParameterHandler只有一个默认实现，下面看一下绑定参数方法的源码：<br>
+          
       
     </div>
     
@@ -638,6 +630,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-7/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -675,7 +675,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-6/">mybatis_6</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a>
     </h1>
   
 
@@ -686,7 +686,8 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>　　现在要说第三个苦力ResultSetHandler（负责处理结果集映射）了，还记得在mapper配置中有一个标签叫resultMap，还有一个叫resultType，这两个标签就是这个时候用的了。<br>　　ResultSetHandler接口只有一个默认的实现类，下面我们来看看关键的几个方法：<br>
+          
       
     </div>
     
@@ -695,6 +696,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-6/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -732,7 +741,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-5/">mybatis_5</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a>
     </h1>
   
 
@@ -743,7 +752,13 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>上文说到Executor是Mybatis的执行者，Mybatis为了防止工作量太大而暴走就准备了几个苦力供他差遣。</p>
+<ul>
+<li>StatementHandler：负责生产statement实例以及监督statement执行sql操作。</li>
+<li>ParameterHandler：负责绑定参数。</li>
+<li>ResultSetHandler：负责处理结果集</li>
+</ul>
+          
       
     </div>
     
@@ -752,6 +767,14 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-5/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
@@ -789,7 +812,7 @@
         
   
     <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-4/">mybatis_4</a>
+      <a  class="article-title" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a>
     </h1>
   
 
@@ -800,7 +823,8 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-        
+              <p>　　前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：<br><img src="/images/mybatis_7.png" alt=""><br>
+          
       
     </div>
     
@@ -809,6 +833,81 @@
       
 
       
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-4/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-mybatis-3" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/15/mybatis-3/" class="article-date">
+      <time datetime="2017-06-15T07:16:35.000Z" itemprop="datePublished">2017-06-15</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <p>　　顾名思义SqlSession指的就是数据库会话，之前说过SqlSessionFactory如何生成SqlSession实例，本次不在赘述。</p>
+<p>　　session中包含了两种执行sql的形式，一种是传统的CRUD，另一种是mapper形式。官方文档推荐使用mapper形式，理由是代码更优雅（笑）。其实主要是mapper形式更加简易，而且通过接口+xml的开发模式代码耦合性很低，更符合开闭原则，而且逻辑看起来更加清晰，配合MyBatis的异常系统定位异常位置简单粗暴（笑哭）。先看下传统的调用方式，下面是outline图：<br><img src="/images/mybatis_6.png" alt=""><br>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-3/#more">查看更多 >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
