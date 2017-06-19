@@ -4,28 +4,28 @@ date: 2017-06-14 17:33:44
 tags: MyBatis
 ---
 
-# 一. MyBatis的架构
+## MyBatis的架构
 ![](/images/mybatis_1.png)
 
 <!-- more -->
 
-## 1.接口层
+### 接口层
 接口层提供了与数据库交互的入口，MyBatis支持两种方式的接口调用
 * 传统API方式
 * mapper接口方式
 
-### 1.1. 传统API
+#### 传统API
 ![](/images/mybatis_2.png)
 　　例：int i = session.selectOne("daoMapper.UserMapper.selectIDByUser", u);
 　　传统API的方式虽然很简洁，但是并不方便，不仅要根据sql类型手动选择调用的方法，而且StatementID使用字符串形式的拼写也加大了人为错误的因素，并不符合框架避免人为错误的这一个特点。
 
-## 1.2. Mapper接口
+### Mapper接口
 　　MyBatis支持两种Mapper接口的实现形式一种是java注解，一种是xml配置。
-### 1.2.1. 注解
+#### 注解
     @Select("select id from users where phoneNO = #{phoneNO}")
 	public int selectID(String phoneNO);
 注解形式开发比较简单，但是不适合比较复杂的sql。
-### 1.2.2. xml配置
+#### xml配置
 	mapper.java:
 	public User selectUser(Integer id);
 
@@ -44,11 +44,11 @@ tags: MyBatis
 * 数据库操作
 * 处理结果集
 
-### 2.1. 处理参数生成动态SQL
+#### 处理参数生成动态SQL
 　　动态生成SQL是一个很优雅的设计，MyBatis通过请求传入的参数对象和Ognl表达式来动态生成需要执行的sql语句，这使得设计sql的时候有很强的灵活性和扩展性。处理参数这部分主要分为两步，首先是查询的时候通过preparedStatement将参数对象与jdbc类型进行映射，其次是查询出结果集时，通过resultSet将查询结果与java类型进行映射。
-### 2.2. 数据库操作
+#### 数据库操作
 　　MyBatis底层与数据库的交互依然是使用的JDBC实现，主要通过Executor这个执行者协调各个模块完成请求操作。
-### 2.3. 处理结果集
+#### 处理结果集
 　　MyBatis会将数据库返回的结果映射为List<E>的形式，这里要提到ResultMap，这个标签的功能很强大，可以完成多层多类型嵌套，支持多对一或一对多的数据形式。下面是一个例子：
 
     <resultMap type="com.ymt.config.protectplan.domain.dto.ProtectplanDto" id="protectplanDetail">
@@ -83,28 +83,28 @@ tags: MyBatis
 	</resultMap>		
 
 
-## 3. 支撑服务层
+### 支撑服务层
 　　支撑服务层主要为数据处理层提供额外功能。
 
-### 3.1. 元对象模块
+#### 元对象模块
 　　元对象是MyBatis的一个独立的模块，提供了一种简洁而优雅的访问对象的方式，使得开发时只需要专注于具体的业务，而不需要关注反射细节，并且无需手动处理各种反射异常。其具体实现是依赖与java的反射机制，所以嘛性能是有点损耗的，不过比起方便程度来说也是可以接受的。（不依赖其他模块，可以单独提出使用）
 
-### 3.2. 缓存机制
+#### 缓存机制
 　　在越来越高的并发量的冲击下，不论是服务器还是数据库的压力都越来越大，缓存机制就是缓解数据库这方面的访问压力的。MyBatis设置了两个缓存层级，一级缓存存在于一次SqlSession会话内，一次会话可以不必重复查询相同的数据，二级缓存可以跨SqlSession存在，但是有很大风险。总之，使用MyBatis的缓存要谨慎，不然反而会影响程序的时效性。
 
-### 3.3. 拦截器机制
+#### 拦截器机制
 　　拦截器是MyBatis提供的一种可以改变自身运行机制的方式，拦截器仅支持拦截Executor. StatementHandler. ResultSetHandler. ParameterHandler。可以对MyBatis做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。
 
-### 3.4. 事务管理
+#### 事务管理
 　　事务管理是ORM框架的一个必不可少的部分。
 
-### 3.5. 连接池机制
+#### 连接池机制
 　　创建数据库连接占据了一次会话的大部分时间，所以在访问量大的系统中，连接池就至关重要，连接池维护了所有数据库会话，节省了每次创建连接的性能开销。
 
-### 3.6. Sql的配置方式
+#### Sql的配置方式
 　　MyBatis的传统配置方式是基于xml配置，但是面向接口编程之风越来越盛，而且xml配置也很繁琐，并不适合简单sql，所以就诞生了一种符合面向接口编程思想的方式，而接口调用就引申出了注解这个大杀器，从此以后就可以使用mapper接口+注解的方式来配置sql，但是需要注意的是MyBatis对注解的支持还很简单，很多复杂的功能还是要用xml配置的。
 
-# 二. MyBatis的主要模块
+## MyBatis的主要模块
   * SqlSession：数据库会话模块，MyBatis的顶层API，程序的调用入口。
   * Configuration：运行环境上下文，维护了MyBatis的所有配置信息，以及各种缓存区。
   * Executor：MyBatis的执行器，负责调度数据库操作的整个流程，完成各种缓存相关操作。
@@ -121,15 +121,15 @@ tags: MyBatis
 (MyBatis只有这几个模块吗？当然不是，那为什么只写这几个是重点呢？这个嘛，当然是我只看了这几个模块的源码了=。=)
 ![](/images/mybatis_3.png)
 
-# 三. MyBatis执行流程
+## MyBatis执行流程
 此处由MyBatis的查询操作举例
-## 1. 开启SqlSession
+### 开启SqlSession
 	InputStream is = Resources.getResourceAsStream("mybatis-config.xml");
 	SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(is,"development1");
 	SqlSession session = sqlSessionFactory.openSession();
 	MyBatis的数据库会话封装在SqlSession中，SqlSession作为顶层API，肩负着增删改查的调度任务。
 
-## 2. SqlSession的查询
+### SqlSession的查询
 	public <E> List<E> selectList(String statement, Object parameter, RowBounds rowBounds) {
 	    try {
 	      //在configuration中维护了一个Map<String, MappedStatement>集合，在初始化的时候会读取所有sql配置文件中的信息，
@@ -146,8 +146,8 @@ tags: MyBatis
 　　在MyBatis初始化时，会根据加载的配置文件创建Configuration实例，mapper配置文件中的sql会生成对应的MappedStatement实例，Configuration维护了一个Map集合来缓存MappedStatement实例，key为nameSpace.functionName。
 　　SqlSession会根据传入的statementID（即上面的key）获取配置缓存区中的MappedStatement实例，然后将操作参数交给Executor执行具体任务。
 
-## 3. Executor执行器
-### 3.1. BaseExecutor
+### Executor执行器
+#### BaseExecutor
 	public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
 	    //创建BoundSql实例
 		BoundSql boundSql = ms.getBoundSql(parameter);
@@ -212,7 +212,7 @@ tags: MyBatis
 	    return list;
 	  }
 BaseExecutor作为模板类，主要任务就是创建BoundSql实例. 处理一级缓存的内容，以及决定是否需要重新查询数据库取值，具体的数据库操作doQuery由子类进行差异化实现。
-### 3.2. SimpleExecutor
+#### SimpleExecutor
 	public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
 	    Statement stmt = null;
 	    try {
@@ -230,7 +230,7 @@ BaseExecutor作为模板类，主要任务就是创建BoundSql实例. 处理一�
 	  }
 　　这里可以看出Executor的主要任务就是通过StatementHandler创建Statement实例，此时会将参数绑定到statement的指定位置，然后将任务下方到StatementHandler中，StatementHandler与JDBC进行交互。
 
-## 4. SimpleStatementHandler
+### SimpleStatementHandler
 	public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
 		//获取sql
 	    String sql = boundSql.getSql();
@@ -240,7 +240,7 @@ BaseExecutor作为模板类，主要任务就是创建BoundSql实例. 处理一�
 	    return resultSetHandler.<E>handleResultSets(statement);
 	  }
 　　SimpleStatementHandler执行了sql语句，并将结果交给ResultSetHandler处理。
-## 5. ResultSetHandler
+### ResultSetHandler
 	public List<Object> handleResultSets(Statement stmt) throws SQLException {
 	    ErrorContext.instance().activity("handling results").object(mappedStatement.getId());
 

@@ -17,7 +17,7 @@
 <meta property="og:site_name" content="Hexo">
 <meta property="og:description" content="前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：">
 <meta property="og:image" content="http://yoursite.com/images/mybatis_7.png">
-<meta property="og:updated_time" content="2017-06-15T08:32:56.113Z">
+<meta property="og:updated_time" content="2017-06-19T07:40:07.884Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="MyBatis源码解析：Executor">
 <meta name="twitter:description" content="前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：">
@@ -189,7 +189,7 @@
                 
                 <section class="switch-part switch-part2">
                     <div class="widget tagcloud" id="js-tagcloud">
-                        <a href="/tags/MyBatis/" style="font-size: 10px;">MyBatis</a>
+                        <a href="/tags/JDKCode/" style="font-size: 15px;">JDKCode</a> <a href="/tags/MyBatis/" style="font-size: 20px;">MyBatis</a> <a href="/tags/算法/" style="font-size: 10px;">算法</a>
                     </div>
                 </section>
                 
@@ -301,11 +301,21 @@
       
           
         <p>　　前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：<br><img src="/images/mybatis_7.png" alt=""><br><a id="more"></a></p>
-<h1 id="1-BaseExecutor"><a href="#1-BaseExecutor" class="headerlink" title="1. BaseExecutor"></a>1. BaseExecutor</h1><p>　　BaseExecutor实现了Executor接口的所有方法，采用了模板模式，为下面几个子类提供公共实现。首先看下update方法的源码：</p>
-<p> public int update(MappedStatement ms, Object parameter) throws SQLException {<br>    ErrorContext.instance().resource(ms.getResource()).activity(“executing an update”).object(ms.getId());<br>    //如果已经关闭则抛出异常<br>    if (closed) {<br>      throw new ExecutorException(“Executor was closed.”);<br>    }<br>    //执行更新操作会清空一级缓存<br>    clearLocalCache();<br>    //由子类做差异化实现<br>    return doUpdate(ms, parameter);<br>  }</p>
-<p>由上可见，update的模板方法比较简单，只是清空了以及缓存，外加关闭异常，具体的操作由子类的doUpdate实现决定。下面看下query方法的源码：</p>
+<h2 id="BaseExecutor"><a href="#BaseExecutor" class="headerlink" title="BaseExecutor"></a>BaseExecutor</h2><p>　　BaseExecutor实现了Executor接口的所有方法，采用了模板模式，为下面几个子类提供公共实现。首先看下update方法的源码：</p>
+<pre><code>public int update(MappedStatement ms, Object parameter) throws SQLException {
+    ErrorContext.instance().resource(ms.getResource()).activity(&quot;executing an update&quot;).object(ms.getId());
+    //如果已经关闭则抛出异常
+    if (closed) {
+      throw new ExecutorException(&quot;Executor was closed.&quot;);
+    }
+    //执行更新操作会清空一级缓存
+    clearLocalCache();
+    //由子类做差异化实现
+    return doUpdate(ms, parameter);
+  }
+</code></pre><p>由上可见，update的模板方法比较简单，只是清空了以及缓存，外加关闭异常，具体的操作由子类的doUpdate实现决定。下面看下query方法的源码：</p>
 <pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
-   //获取sql对象
+  //获取sql对象
   BoundSql boundSql = ms.getBoundSql(parameter);
   //获取缓存key
    CacheKey key = createCacheKey(ms, parameter, rowBounds, boundSql);
@@ -375,7 +385,7 @@ private &lt;E&gt; List&lt;E&gt; queryFromDatabase(MappedStatement ms, Object par
     return doQueryCursor(ms, parameter, rowBounds, boundSql);
   }
 </code></pre><p>cursor是3.4版本新增的特性，用于以游标的方式返回结果，主要用于数据量很大的业务场景，会分批次读取数据，降低每次对数据库的占用时间。</p>
-<h1 id="2-SimpleExecutor"><a href="#2-SimpleExecutor" class="headerlink" title="2. SimpleExecutor"></a>2. SimpleExecutor</h1><p>　　简单sql执行器，不支持添加参数。这里用doQuery方法进行示例：</p>
+<h2 id="SimpleExecutor"><a href="#SimpleExecutor" class="headerlink" title="SimpleExecutor"></a>SimpleExecutor</h2><p>　　简单sql执行器，不支持添加参数。这里用doQuery方法进行示例：</p>
 <pre><code>  public &lt;E&gt; List&lt;E&gt; doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
     Statement stmt = null;
     try {
@@ -401,7 +411,7 @@ private Statement prepareStatement(StatementHandler handler, Log statementLog) t
     handler.parameterize(stmt);
     return stmt;
   }
-</code></pre><h1 id="3-ReuseExecutor"><a href="#3-ReuseExecutor" class="headerlink" title="3. ReuseExecutor"></a>3. ReuseExecutor</h1><p>　　可重复使用执行器，内部维护了一个Map<string, statement="">缓存池，在一个session生命周期内相同的statement只会实例化一次。与simple的主要差异在于下面两个方法</string,></p>
+</code></pre><h2 id="ReuseExecutor"><a href="#ReuseExecutor" class="headerlink" title="ReuseExecutor"></a>ReuseExecutor</h2><p>　　可重复使用执行器，内部维护了一个Map<string, statement="">缓存池，在一个session生命周期内相同的statement只会实例化一次。与simple的主要差异在于下面两个方法</string,></p>
 <pre><code>public List&lt;BatchResult&gt; doFlushStatements(boolean isRollback) throws SQLException {
     //遍历statement缓存池，依次关闭
     for (Statement stmt : statementMap.values()) {
@@ -433,7 +443,7 @@ private Statement prepareStatement(StatementHandler handler, Log statementLog) t
     handler.parameterize(stmt);
     return stmt;
   }
-</code></pre><h1 id="4-BatchExecutor"><a href="#4-BatchExecutor" class="headerlink" title="4. BatchExecutor"></a>4. BatchExecutor</h1><p>批处理执行器，BatchExecutor内维护了四个变量，分别是</p>
+</code></pre><h2 id="BatchExecutor"><a href="#BatchExecutor" class="headerlink" title="BatchExecutor"></a>BatchExecutor</h2><p>批处理执行器，BatchExecutor内维护了四个变量，分别是</p>
 <ul>
 <li>statementList：statement执行队列</li>
 <li>batchResultList：结果集队列</li>
@@ -536,11 +546,11 @@ public List&lt;BatchResult&gt; doFlushStatements(boolean isRollback) throws SQLE
       batchResultList.clear();
     }
   }
-</code></pre><h1 id="5-CachingExecutor"><a href="#5-CachingExecutor" class="headerlink" title="5. CachingExecutor"></a>5. CachingExecutor</h1><p>　　缓存执行器，顾名思义这种执行器内部必定维护了一个缓存区，也主要针对于查询语句，具体代码如下：</p>
-<pre><code> //实际的操作执行器
-  private Executor delegate;
-  //缓存容器，缓存实体TransactionalCache实现了Cache接口
-  private TransactionalCacheManager tcm = new TransactionalCacheManager();
+</code></pre><h2 id="CachingExecutor"><a href="#CachingExecutor" class="headerlink" title="CachingExecutor"></a>CachingExecutor</h2><p>　　缓存执行器，顾名思义这种执行器内部必定维护了一个缓存区，也主要针对于查询语句，具体代码如下：</p>
+<pre><code>//实际的操作执行器
+private Executor delegate;
+//缓存容器，缓存实体TransactionalCache实现了Cache接口
+private TransactionalCacheManager tcm = new TransactionalCacheManager();
 public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
       throws SQLException {
     Cache cache = ms.getCache();
@@ -575,7 +585,7 @@ public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject,
         <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></p>
         <p><span>文章作者:</span><a  href="/" title="访问 Arthur 的个人博客">Arthur</a></p>
         <p><span>发布时间:</span>2017年06月15日 - 15时16分</p>
-        <p><span>最后更新:</span>2017年06月15日 - 16时32分</p>
+        <p><span>最后更新:</span>2017年06月19日 - 15时40分</p>
         <p>
             <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-4/" title="MyBatis源码解析：Executor">http://yoursite.com/2017/06/15/mybatis-4/</a>
             <span class="copy-path" data-clipboard-text="原文: http://yoursite.com/2017/06/15/mybatis-4/　　作者: Arthur" title=""></span>
@@ -612,7 +622,7 @@ public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject,
 
     <div id="toc" class="toc-article">
     <strong class="toc-title">文章目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-BaseExecutor"><span class="toc-number">1.</span> <span class="toc-text">1. BaseExecutor</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-SimpleExecutor"><span class="toc-number">2.</span> <span class="toc-text">2. SimpleExecutor</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-ReuseExecutor"><span class="toc-number">3.</span> <span class="toc-text">3. ReuseExecutor</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-BatchExecutor"><span class="toc-number">4.</span> <span class="toc-text">4. BatchExecutor</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-CachingExecutor"><span class="toc-number">5.</span> <span class="toc-text">5. CachingExecutor</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#BaseExecutor"><span class="toc-number">1.</span> <span class="toc-text">BaseExecutor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SimpleExecutor"><span class="toc-number">2.</span> <span class="toc-text">SimpleExecutor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ReuseExecutor"><span class="toc-number">3.</span> <span class="toc-text">ReuseExecutor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#BatchExecutor"><span class="toc-number">4.</span> <span class="toc-text">BatchExecutor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#CachingExecutor"><span class="toc-number">5.</span> <span class="toc-text">CachingExecutor</span></a></li></ol>
 </div>
 <style>
     .left-col .switch-btn {
@@ -694,7 +704,7 @@ public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject,
             </a>
         
     </div>
-    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li></ul>
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/AVL/">AVL树的平衡算法（JAVA实现）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-4/">LinkedList源码阅读笔记（基于JDK1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-3/">ArrayList源码阅读笔记(基于JDk1.8)</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-2/">LinkedHashMap源码阅读笔记（基于jdk1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-1/">HashMap源码阅读笔记（基于jdk1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li></ul>
     <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
     <script>
         $(".post-list").addClass("toc-article");

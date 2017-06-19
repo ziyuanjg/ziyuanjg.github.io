@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="baidu-site-verification" content="L6Lm9d5Crl"/>
+  
+  
+  
+  
+  <title>HashMap源码阅读笔记（基于jdk1.8） | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="HashMap概述　　HashMap是基于Map接口的一个非同步实现，此实现提供key-value形式的数据映射，支持null值。">
+<meta name="keywords" content="JDKCode">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HashMap源码阅读笔记（基于jdk1.8）">
+<meta property="og:url" content="http://yoursite.com/2017/06/19/JDKCode-1/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="HashMap概述　　HashMap是基于Map接口的一个非同步实现，此实现提供key-value形式的数据映射，支持null值。">
+<meta property="og:image" content="http://yoursite.com/images/mybatis_29.png">
+<meta property="og:updated_time" content="2017-06-19T07:24:38.116Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HashMap源码阅读笔记（基于jdk1.8）">
+<meta name="twitter:description" content="HashMap概述　　HashMap是基于Map接口的一个非同步实现，此实现提供key-value形式的数据映射，支持null值。">
+<meta name="twitter:image" content="http://yoursite.com/images/mybatis_29.png">
+  
+    <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/img/favicon.png">
+  
+  
+  <link rel="stylesheet" href="//cdn.bootcss.com/animate.css/3.5.0/animate.min.css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/font-awesome/css/font-awesome.min.css">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  
+  
+      <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  
+  <!-- 加载特效 -->
+    <script src="/js/pace.js"></script>
+    <link href="/css/pace/pace-theme-flash.css" rel="stylesheet" />
+  <script>
+      var yiliaConfig = {
+          fancybox: true,
+          animate: true,
+          isHome: false,
+          isPost: true,
+          isArchive: false,
+          isTag: false,
+          isCategory: false,
+          open_in_new: false
+      }
+  </script>
+</head>
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+    <header id="header" class="inner">
+        <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
+        <a href="/" class="profilepic">
+            
+            <img lazy-src="/img/avatar.png" class="js-avatar">
+            
+        </a>
+        <hgroup>
+          <h1 class="header-author"><a href="/">Arthur</a></h1>
+        </hgroup>
+        
+        
+            <form>
+                <input type="text" class="st-default-search-input search" id="local-search-input" placeholder=" Search...">
+            </form>
+            <div id="local-search-result"></div>
+        
+        
+            <script type="text/javascript">
+                (function() {
+                    'use strict';
+                    function getMatchData(keyword, data) {
+                        var matchData = [];
+                        for(var i =0;i<data.length;i++){
+                            if(data[i].title.toLowerCase().indexOf(keyword)>=0) 
+                                matchData.push(data[i])
+                        }
+                        return matchData;
+                    }
+                    var $input = $('#local-search-input');
+                    var $resultContent = $('#local-search-result');
+                    $input.keyup(function(){
+                        $.ajax({
+                            url: '/search.json',
+                            dataType: "json",
+                            success: function( json ) {
+                                var str='<ul class=\"search-result-list\">';                
+                                var keyword = $input.val().trim().toLowerCase();
+                                $resultContent.innerHTML = "";
+                                if ($input.val().trim().length <= 0) {
+                                    $resultContent.empty();
+                                    $('#switch-area').show();
+                                    return;
+                                }
+                                var results = getMatchData(keyword, json);
+                                if(results.length === 0){
+                                    $resultContent.empty();
+                                    $('#switch-area').show();
+                                    return;
+                                } 
+                                for(var i =0; i<results.length; i++){
+                                    str += "<li><a href='"+ results[i].url +"' class='search-result-title'>"+ results[i].title +"</a></li>";
+                                }
+                                str += "</ul>";
+                                $resultContent.empty();
+                                $resultContent.append(str);
+                                $('#switch-area').hide();
+                            }
+                        });
+                    });
+                })();
+            </script>
+        
+        
+            <div id="switch-btn" class="switch-btn">
+                <div class="icon">
+                    <div class="icon-ctn">
+                        <div class="icon-wrap icon-house" data-idx="0">
+                            <div class="birdhouse"></div>
+                            <div class="birdhouse_holes"></div>
+                        </div>
+                        <div class="icon-wrap icon-ribbon hide" data-idx="1">
+                            <div class="ribbon"></div>
+                        </div>
+                        
+                        <div class="icon-wrap icon-link hide" data-idx="2">
+                            <div class="loopback_l"></div>
+                            <div class="loopback_r"></div>
+                        </div>
+                        
+                        
+                        <div class="icon-wrap icon-me hide" data-idx="3">
+                            <div class="user"></div>
+                            <div class="shoulder"></div>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="tips-box hide">
+                    <div class="tips-arrow"></div>
+                    <ul class="tips-inner">
+                        <li>菜单</li>
+                        <li>标签</li>
+                        
+                        <li>友情链接</li>
+                        
+                        
+                        <li>关于我</li>
+                        
+                    </ul>
+                </div>
+            </div>
+        
+        <div id="switch-area" class="switch-area">
+            <div class="switch-wrap">
+                <section class="switch-part switch-part1">
+                    <nav class="header-menu">
+                        <ul>
+                        
+                            <li><a  href="/archives/">所有文章</a></li>
+                        
+                            <li><a  href="/about/">关于我</a></li>
+                        
+                        </ul>
+                    </nav>
+                    <nav class="header-nav">
+                        <ul class="social">
+                            
+                                <a class="fl github"  target="_blank" href="/xxxxx" title="github">github</a>
+                            
+                                <a class="fl weibo"  target="_blank" href="/xxxxxxxx" title="weibo">weibo</a>
+                            
+                                <a class="fl rss"  target="_blank" href="/atom.xml" title="rss">rss</a>
+                            
+                        </ul>
+                    </nav>
+                </section>
+                
+                <section class="switch-part switch-part2">
+                    <div class="widget tagcloud" id="js-tagcloud">
+                        <a href="/tags/JDKCode/" style="font-size: 15px;">JDKCode</a> <a href="/tags/MyBatis/" style="font-size: 20px;">MyBatis</a> <a href="/tags/算法/" style="font-size: 10px;">算法</a>
+                    </div>
+                </section>
+                
+                
+                <section class="switch-part switch-part3">
+                    <div id="js-friends">
+                    
+                      <a target="_blank"  class="main-nav-link switch-friends-link" href="http://blog.csdn.net/baidu_21483933">csdn</a>
+                    
+                      <a target="_blank"  class="main-nav-link switch-friends-link" href="https://segmentfault.com/blog/maocg_web">segmentfault</a>
+                    
+                      <a target="_blank"  class="main-nav-link switch-friends-link" href="http://www.jianshu.com/users/eb37ef89c746/latest_articles">简书</a>
+                    
+                    </div>
+                </section>
+                
+                
+                
+                <section class="switch-part switch-part4">
+                
+                    <div id="js-aboutme">爱动漫,爱游戏,爱编程,爱运动,爱的太多了!</div>
+                </section>
+                
+            </div>
+        </div>
+    </header>
+</div>
+
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+      <div class="overlay">
+          <div class="slider-trigger"></div>
+          <h1 class="header-author js-mobile-header hide"><a href="/" title="回到主页">Arthur</a></h1>
+      </div>
+    <div class="intrude-less">
+        <header id="header" class="inner">
+            <a href="/" class="profilepic">
+                
+                    <img lazy-src="/img/avatar.png" class="js-avatar">
+                
+            </a>
+            <hgroup>
+              <h1 class="header-author"><a href="/" title="回到主页">Arthur</a></h1>
+            </hgroup>
+            
+            <nav class="header-menu">
+                <ul>
+                
+                    <li><a href="/archives/">所有文章</a></li>
+                
+                    <li><a href="/about/">关于我</a></li>
+                
+                <div class="clearfix"></div>
+                </ul>
+            </nav>
+            <nav class="header-nav">
+                <div class="social">
+                    
+                        <a class="github" target="_blank" href="/xxxxx" title="github">github</a>
+                    
+                        <a class="weibo" target="_blank" href="/xxxxxxxx" title="weibo">weibo</a>
+                    
+                        <a class="rss" target="_blank" href="/atom.xml" title="rss">rss</a>
+                    
+                </div>
+            </nav>
+        </header>                
+    </div>
+</nav>
+      <div class="body-wrap"><article id="post-JDKCode-1" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/19/JDKCode-1/" class="article-date">
+      <time datetime="2017-06-19T06:29:15.000Z" itemprop="datePublished">2017-06-19</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      HashMap源码阅读笔记（基于jdk1.8）
+    </h1>
+  
+
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+
+        
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JDKCode/">JDKCode</a></li></ul>
+    </div>
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+        <h2 id="HashMap概述"><a href="#HashMap概述" class="headerlink" title="HashMap概述"></a>HashMap概述</h2><p>　　HashMap是基于Map接口的一个非同步实现，此实现提供key-value形式的数据映射，支持null值。<br><a id="more"></a><br>HashMap的常量和重要变量如下：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">常量名</th>
+<th style="text-align:left">含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">DEFAULT_INITIAL_CAPACITY = 16</td>
+<td style="text-align:left">Node数组的默认长度</td>
+</tr>
+<tr>
+<td style="text-align:left">MAXIMUM_CAPACITY = 1073741824</td>
+<td style="text-align:left">Node数组的最大长度</td>
+</tr>
+<tr>
+<td style="text-align:left">DEFAULT_LOAD_FACTOR = 0.75F</td>
+<td style="text-align:left">负载因子，调控控件与冲突率的因数</td>
+</tr>
+<tr>
+<td style="text-align:left">TREEIFY_THRESHOLD = 8</td>
+<td style="text-align:left">链表转换为树的阈值，超过这个长度的链表会被转换为红黑树</td>
+</tr>
+<tr>
+<td style="text-align:left">UNTREEIFY_THRESHOLD = 6</td>
+<td style="text-align:left">当进行resize操作时，小于这个长度的树会被转换为链表</td>
+</tr>
+<tr>
+<td style="text-align:left">MIN_TREEIFY_CAPACITY = 64</td>
+<td style="text-align:left">链表被转换成树形的最小容量，如果没有达到这个容量只会执行resize进行扩容</td>
+</tr>
+<tr>
+<td style="text-align:left">Node<k, v="">[] table</k,></td>
+<td style="text-align:left">储存元素的数组</td>
+</tr>
+<tr>
+<td style="text-align:left">Set<map.entry<k, v="">&gt; entrySet</map.entry<k,></td>
+<td style="text-align:left">set数组，用于迭代元素</td>
+</tr>
+<tr>
+<td style="text-align:left">int size</td>
+<td style="text-align:left">存放元素的个数，但不等于数组的长度</td>
+</tr>
+<tr>
+<td style="text-align:left">int modCount</td>
+<td style="text-align:left">每次扩容和更改map结构的计数器</td>
+</tr>
+<tr>
+<td style="text-align:left">int threshold</td>
+<td style="text-align:left">临界值，当实际大小（容量*负载因子）超过临界值的时候，会进行扩容</td>
+</tr>
+<tr>
+<td style="text-align:left">float loadFactor</td>
+<td style="text-align:left">负载因子，默认为0.75F</td>
+</tr>
+</tbody>
+</table>
+<h2 id="HashMap实现原理"><a href="#HashMap实现原理" class="headerlink" title="HashMap实现原理"></a>HashMap实现原理</h2><p>　　在jdk1.8中，HashMap是采用数组+链表+红黑树的形式实现。如下图：<br><img src="/images/mybatis_29.png" alt=""></p>
+<p>　　其中链表的实现如下：</p>
+<pre><code>static class Node&lt;K,V&gt; implements Map.Entry&lt;K,V&gt; {
+    final int hash;
+    final K key;
+    V value;
+    Node&lt;K,V&gt; next;
+
+    Node(int hash, K key, V value, Node&lt;K,V&gt; next) {
+        this.hash = hash;
+        this.key = key;
+        this.value = value;
+        this.next = next;
+    }
+
+    public final K getKey()        { return key; }
+    public final V getValue()      { return value; }
+    public final String toString() { return key + &quot;=&quot; + value; }
+
+    public final int hashCode() {
+        return Objects.hashCode(key) ^ Objects.hashCode(value);
+    }
+
+    public final V setValue(V newValue) {
+        V oldValue = value;
+        value = newValue;
+        return oldValue;
+    }
+
+    public final boolean equals(Object o) {
+        if (o == this)
+            return true;
+        if (o instanceof Map.Entry) {
+            Map.Entry&lt;?,?&gt; e = (Map.Entry&lt;?,?&gt;)o;
+            if (Objects.equals(key, e.getKey()) &amp;&amp;
+                Objects.equals(value, e.getValue()))
+                return true;
+        }
+        return false;
+    }
+}
+</code></pre><p>　　可以看到，node中包含一个next变量，这个就是链表的关键点，hash结果相同的元素就是通过这个next进行关联的。</p>
+<p>　　接下来看看红黑树的实现：</p>
+<pre><code>static final class TreeNode&lt;K,V&gt; extends LinkedHashMap.Entry&lt;K,V&gt; {
+    TreeNode&lt;K,V&gt; parent;  // red-black tree links
+    TreeNode&lt;K,V&gt; left;
+    TreeNode&lt;K,V&gt; right;
+    TreeNode&lt;K,V&gt; prev;    // needed to unlink next upon deletion
+    boolean red;
+    TreeNode(int hash, K key, V val, Node&lt;K,V&gt; next) {
+        super(hash, key, val, next);
+    }
+</code></pre><p>　　　……<br>    }</p>
+<p>　　红黑树比链表多了四个变量，parent父节点、left左节点、right右节点、prev上一个同级节点，红黑树内容较多，有兴趣的可以自行百度，不在赘述。</p>
+<p>　　在来说说hash算法，HashMap中使用的算法如下</p>
+<pre><code>static final int hash(Object key) {
+    int h;
+    return (key == null) ? 0 : (h = key.hashCode()) ^ (h &gt;&gt;&gt; 16);
+}
+</code></pre><p>　　这个hash先将key右移了16位，然后与key进行异或，这里还涉及到后面put方法中的另一次&amp;操作，</p>
+<pre><code>tab[i = (n - 1) &amp; hash]
+</code></pre><p>　　tab既是table，n是map集合的容量大小，hash是上面方法的返回值。因为通常声明map集合时不会指定大小，或者初始化的时候就创建一个容量很大的map对象，所以这个通过容量大小与key值进行hash的算法在开始的时候只会对低位进行计算，虽然容量的2进制高位一开始都是0，但是key的2进制高位通常是有值的，因此先在hash方法中将key的hashCode右移16位在与自身异或，使得高位也可以参与hash，更大程度上减少了碰撞率。</p>
+<p>　　构造方法如下：</p>
+<pre><code>public HashMap()                                             //默认构造方法
+public HashMap(int initialCapacity)                          //参数为初始大小
+public HashMap(int initialCapacity, float loadFactor)        //参数为初始大小，负载因子
+</code></pre><p>　　这里又涉及到另一个算法：</p>
+<pre><code>static final int tableSizeFor(int cap) {
+    int n = cap - 1;
+    n |= n &gt;&gt;&gt; 1;
+    n |= n &gt;&gt;&gt; 2;
+    n |= n &gt;&gt;&gt; 4;
+    n |= n &gt;&gt;&gt; 8;
+    n |= n &gt;&gt;&gt; 16;
+    return (n &lt; 0) ? 1 : (n &gt;= MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : n + 1;
+}
+</code></pre><p>　　这个算法很有意思，通过给定的大小cap，计算大于等于cap的最小的2的幂数。连续5次右移运算乍一看没有什么意思，但仔细一想2进制都是0和1啊，这就有问题了，第一次右移一位，就表示但凡是1的位置右边的一位都变成了1，第二次右移两位，上次已经把有1的位置都变成连续两个1了，是不是感觉很神奇，如此下来5次运算正好将int的32位都转了个遍，以最高的一个1的位置为基准将后面所有位数都变为1，然后在进行n+1，不就变成了2的幂数。这里还有一点要注意的是第一行的cap-1，这是因为如果cap本身就是2的幂数，会出现结果是cap的2倍的情况，会浪费空间。</p>
+<h2 id="HashMap的存取"><a href="#HashMap的存取" class="headerlink" title="HashMap的存取"></a>HashMap的存取</h2><h3 id="存储"><a href="#存储" class="headerlink" title="存储"></a>存储</h3><pre><code>final V putVal(int hash, K key, V value, boolean onlyIfAbsent, boolean evict) {                       //put方法的实际执行者
+        //hash，key的hash值；onlyIfAbsent，是否改变原有值；evict，LinkedHashMap回调时才会用到。
+        Node&lt;K,V&gt;[] tab; 
+        Node&lt;K,V&gt; p; 
+        int n, i;
+        if ((tab = table) == null || (n = tab.length) == 0)
+            n = (tab = resize()).length;                                                              //table为空或长度为0时，对table进行初始化，分配内存
+     　 if ((p = tab[i = (n - 1) &amp; hash]) == null)
+            tab[i] = newNode(hash, key, value, null);                                                 //当put的key在map中不存在时，直接new一个Node存入table。
+        else {                                                                                        //当key在map中存在时，进入此分支。
+            　Node&lt;K,V&gt; e; K k;
+            if (p.hash == hash &amp;&amp; ((k = p.key) == key || (key != null &amp;&amp; key.equals(k))))             //此处的p是table中的第n-1个元素，每一次必检查此元素的key是否与put的key相同，如果相同则替换value
+                e = p;
+            else if (p instanceof TreeNode)                                                           //检查p是否是TreeNode类型。
+                e = ((TreeNode&lt;K,V&gt;)p).putTreeVal(this, tab, hash, key, value);
+            else {                                                                                    //如果第n-1个元素不符合，则一次遍历table中其余元素，直到找到相应key值。
+                for (int binCount = 0; ; ++binCount) {
+                    if ((e = p.next) == null) {                                                       //此处主要为了防止hash出现重复，只有上边tab[i = (n - 1) &amp; hash]中存在元素且不是put的元素时才会进入这个分支。
+                        p.next = newNode(hash, key, value, null);
+                        if (binCount &gt;= TREEIFY_THRESHOLD - 1)                                        // 此处判断的意义是当链表长度超过8时，转换为红黑树，在1.8以前是没有的，链表查询的复杂度是O(n)，而红黑树是O(log(n))，但是如果hash结果不均匀会极大的影响性能
+                            treeifyBin(tab, hash);
+                        break;
+                    }
+                    if (e.hash == hash &amp;&amp; ((k = e.key) == key || (key != null &amp;&amp; key.equals(k))))     //进入此分支标志已找到与put的key值相同的元素，元素变量为e。
+                    　　break;
+                    p = e;
+                }
+            }
+               if (e != null) {                                                                       // 将对应key的value替换为put的value，同时返回旧value，只有存在key时才会返回！
+                V oldValue = e.value;
+                if (!onlyIfAbsent || oldValue == null)
+                    e.value = value;
+                afterNodeAccess(e);    
+                return oldValue;
+               }
+        }
+    ++modCount;
+    if (++size &gt; threshold)
+        resize();                                                                                    //对table进行扩容
+    afterNodeInsertion(evict);    
+    return null;
+}    
+</code></pre><p>　　从上面的源码可以看出，首先会判断key的hash与map容量-1的与计算值，如果数组中这个位置没有元素则直接插入，反之则在遍历此位置的元素链表，直到在最后插入。这个地方有一个链表的阈值（默认是8），如果一个链表的长度达到了阈值，则调用treefyBin()将链表转换成红黑树。</p>
+<h3 id="扩容"><a href="#扩容" class="headerlink" title="扩容"></a>扩容</h3><pre><code>final Node&lt;K,V&gt;[] resize() {                                      //扩容方法
+    Node&lt;K,V&gt;[] oldTab = table;
+    int oldCap = (oldTab == null) ? 0 : oldTab.length;            //map现在的容量
+    int oldThr = threshold;                            
+    int newCap, newThr = 0;
+    if (oldCap &gt; 0) {
+        if (oldCap &gt;= MAXIMUM_CAPACITY) {                         //如果现在的容量大于等于设定的最大容量则不会进行扩容
+            threshold = Integer.MAX_VALUE;
+            return oldTab;
+        }
+        else if ((newCap = oldCap &lt;&lt; 1) &lt; MAXIMUM_CAPACITY &amp;&amp; oldCap &gt;= DEFAULT_INITIAL_CAPACITY)
+            newThr = oldThr &lt;&lt; 1;                                 //如果现在的容量扩大为2倍依然没有超过最大容量，并且现在的容量大于等于数组的默认长度，将map的容量扩大为2倍
+    }
+    else if (oldThr &gt; 0)                                          //hashMap有一个构造方法会指定初始大小，这时候就会用到这个分支，对map进行初始化
+        newCap = oldThr;
+    else {                                                        //这个分支是默认的初始化参数分支，比如用new hashMap()生成一个对象，就会进入这个分支初始化
+        newCap = DEFAULT_INITIAL_CAPACITY;
+        newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
+    }
+    if (newThr == 0) {
+        float ft = (float)newCap * loadFactor;
+        newThr = (newCap &lt; MAXIMUM_CAPACITY &amp;&amp; ft &lt; (float)MAXIMUM_CAPACITY ? (int)ft : Integer.MAX_VALUE);
+    }
+    threshold = newThr;
+    @SuppressWarnings({&quot;rawtypes&quot;,&quot;unchecked&quot;})
+    Node&lt;K,V&gt;[] newTab = (Node&lt;K,V&gt;[])new Node[newCap];
+    table = newTab;
+    if (oldTab != null) {                                         //扩容操作，将oldTab的元素依次添加到newTab
+        for (int j = 0; j &lt; oldCap; ++j) {
+            Node&lt;K,V&gt; e;
+            if ((e = oldTab[j]) != null) {
+                oldTab[j] = null;
+                if (e.next == null)
+                    newTab[e.hash &amp; (newCap - 1)] = e;
+                else if (e instanceof TreeNode)
+                    ((TreeNode&lt;K,V&gt;)e).split(this, newTab, j, oldCap);
+                else { // preserve order
+                    Node&lt;K,V&gt; loHead = null, loTail = null;
+                    Node&lt;K,V&gt; hiHead = null, hiTail = null;
+                    Node&lt;K,V&gt; next;
+                    do {
+                        next = e.next;
+                        if ((e.hash &amp; oldCap) == 0) {
+                            if (loTail == null)
+                                loHead = e;
+                            else
+                                loTail.next = e;
+                            loTail = e;
+                        }
+                        else {
+                            if (hiTail == null)
+                                hiHead = e;
+                            else
+                                hiTail.next = e;
+                            hiTail = e;
+                        }
+                    } while ((e = next) != null);
+                    if (loTail != null) {
+                        loTail.next = null;
+                        newTab[j] = loHead;
+                    }
+                    if (hiTail != null) {
+                        hiTail.next = null;
+                        newTab[j + oldCap] = hiHead;
+                    }
+                }
+            }
+        }
+    }
+    return newTab;
+}
+</code></pre><p>　　在这个方法里有几个比较有意思的地方，首先是最大容量MAXIMUN_CAPACITY，这个值实际就是int的最大值，个人推测应该是为了配合put时的hash算法，因为计算key值hash的算法返回值是int型，如果容量超过int的阈值，在进行与运算时碰撞率会增大很多倍。然后是扩容的方式，这里是new了一个数组！这也是HashMap不安全的关键之一。当超过一个线程对一个HashMap对象进行put的时候如果触发了resize方法，后执行的那一个会把之前执行的结果覆盖掉！也就是先put的值不会真的存入map中。</p>
+<h3 id="链表转换为红黑树"><a href="#链表转换为红黑树" class="headerlink" title="链表转换为红黑树"></a>链表转换为红黑树</h3><pre><code>final void treeifyBin(Node&lt;K,V&gt;[] tab, int hash) {                     //将链表转换为红黑树
+    int n, index; Node&lt;K,V&gt; e;
+    if (tab == null || (n = tab.length) &lt; MIN_TREEIFY_CAPACITY)        //如果map的容量小于64（默认值），会调用resize扩容，不会转换为红黑树
+        resize();
+    else if ((e = tab[index = (n - 1) &amp; hash]) != null) {
+        TreeNode&lt;K,V&gt; hd = null, tl = null;
+        do {
+            TreeNode&lt;K,V&gt; p = replacementTreeNode(e, null);            //Node转换为TreeNode
+            if (tl == null)
+                hd = p;
+            else {
+                p.prev = tl;
+                tl.next = p;
+            }
+            tl = p;
+        } while ((e = e.next) != null);
+        if ((tab[index] = hd) != null)    
+            hd.treeify(tab);                                           //调用TreeNode的树排序方法
+    }
+}
+</code></pre><p>　　这里需要注意的是当map容量小于64时，就算链表超过了8也不会转换为红黑树。</p>
+<h3 id="Map克隆"><a href="#Map克隆" class="headerlink" title="Map克隆"></a>Map克隆</h3><pre><code>final void putMapEntries(Map&lt;? extends K, ? extends V&gt; m, boolean evict) {    //主要用于clone方法和putAll方法和一个构造方法HashMap(Map&lt;? extends K, ? extends V&gt; m)。
+    int s = m.size();
+    if (s &gt; 0) {    
+        if (table == null) {                                                  // 如果是一个new的map，即table变量还没有初始化，先通过参数的map.size和负载因子计算所需的map大小。
+            float ft = ((float)s / loadFactor) + 1.0F;
+            int t = ((ft &lt; (float)MAXIMUM_CAPACITY) ?
+                     (int)ft : MAXIMUM_CAPACITY);
+            if (t &gt; threshold)                                                //如果计算出的大小大于map的实际存储容量，则重新计算存储容量
+                threshold = tableSizeFor(t);
+        }
+        else if (s &gt; threshold)                                               //如果参数map大小大于实际存储容量，则将map容量变为2倍
+            resize();
+        for (Map.Entry&lt;? extends K, ? extends V&gt; e : m.entrySet()) {          //遍历赋值
+            K key = e.getKey();
+            V value = e.getValue();
+            putVal(hash(key), key, value, false, evict);
+        }
+    }
+}
+</code></pre><h3 id="读取"><a href="#读取" class="headerlink" title="读取"></a>读取</h3><pre><code>final Node&lt;K,V&gt; getNode(int hash, Object key) {                                //get的实际实现方法
+    Node&lt;K,V&gt;[] tab;
+    Node&lt;K,V&gt; first, e; 
+    int n; K k;
+    if ((tab = table) != null &amp;&amp; (n = tab.length) &gt; 0 &amp;&amp; (first = tab[(n - 1) &amp; hash]) != null) {          //通过hash定位到一个桶，并且有元素存在
+        if (first.hash == hash &amp;&amp;  ((k = first.key) == key || (key != null &amp;&amp; key.equals(k))))             //总是检查桶中的第一个元素
+            return first;
+        if ((e = first.next) != null) {                                        //如果第一个元素不符合，则继续搜索
+            if (first instanceof TreeNode)                                     //如果桶中是红黑树，进入此分支，实际执行的是TreeNode中的find方法，从根节点开始向下搜寻
+                return ((TreeNode&lt;K,V&gt;)first).getTreeNode(hash, key);
+            do {                                                               //如果是链表结构则依次遍历
+                if (e.hash == hash &amp;&amp; ((k = e.key) == key || (key != null &amp;&amp; key.equals(k))))
+                    return e;
+            } while ((e = e.next) != null);
+        }
+    }
+    return null;
+}
+</code></pre><p>　　看过put方法后再来看get就容易很多了，首先用put中的hash算法定位到数组中的位置，如果有元素且key值相同直接返回，如果有元素且key值不同那就要向下遍历了，如果是链表就一直遍历next，如果是红黑树则调用getTreeNode方法查找节点。</p>
+<h3 id="迭代器"><a href="#迭代器" class="headerlink" title="迭代器"></a>迭代器</h3><pre><code>abstract class HashIterator {                                                  //KeySet和EntrySet的迭代器的父类
+    Node&lt;K,V&gt; next;                                                            // 下一个元素
+    Node&lt;K,V&gt; current;                                                         // 删除方法会调用
+    int expectedModCount;                                                      // 就是hashMap中的modCount
+    int index;                                                                 // 元素序号
+
+    HashIterator() {                                                           //为上面四个变量赋初始值
+        expectedModCount = modCount;
+        Node&lt;K,V&gt;[] t = table;
+        current = next = null;
+        index = 0;
+        if (t != null &amp;&amp; size &gt; 0) { // advance to first entry
+            do {} while (index &lt; t.length &amp;&amp; (next = t[index++]) == null);
+        }
+    }
+    .......
+}
+</code></pre><p>　　HashIterator是KerSet和EntrySet的父类，这个迭代器中有一个属性是expectedModCount要特别注意，这个变量等价于HashMap对象中的modCount，如果在迭代器没有执行完的期间对map进行增删，会抛出异常阻止继续迭代，代码如下：</p>
+<pre><code>final Node&lt;K,V&gt; nextNode() {                                                  //获取下一个元素
+    Node&lt;K,V&gt;[] t;
+    Node&lt;K,V&gt; e = next;
+    if (modCount != expectedModCount)                                         //在迭代器执行期间只能用下面的remove删除元素，否则会抛出异常，不能增加元素
+        throw new ConcurrentModificationException();
+        if (e == null)                                                        //如果没有下一个会抛出异常
+            throw new NoSuchElementException();
+        if ((next = (current = e).next) == null &amp;&amp; (t = table) != null) {     //如果next没有取到值，通过index继续向下遍历，直到取到元素为止
+            do {} while (index &lt; t.length &amp;&amp; (next = t[index++]) == null);
+        }
+        return e;
+    }
+</code></pre><p>　　不过迭代器虽然不允许添加元素，但是给了一个删除的方法：</p>
+<pre><code>public final void remove() {                                                  //删除方法
+        Node&lt;K,V&gt; p = current;
+        if (p == null)
+            throw new IllegalStateException();
+        if (modCount != expectedModCount)
+            throw new ConcurrentModificationException();
+        current = null;
+        K key = p.key;
+        removeNode(hash(key), key, null, false, false);
+        expectedModCount = modCount;                                          //关键语句，这里做了一个同步，否则与正常的删除没有区别，这个同步避免了上面的异常抛出
+    }
+</code></pre><p>　　与普通的删除方法就差在最后这一行上，这里同步了迭代器和HashMap对象的操作数，便不会抛出异常。</p>
+
+      
+    </div>
+    
+  </div>
+  
+    
+    <div class="copyright">
+        <p><span>本文标题:</span><a  href="/2017/06/19/JDKCode-1/">HashMap源码阅读笔记（基于jdk1.8）</a></p>
+        <p><span>文章作者:</span><a  href="/" title="访问 Arthur 的个人博客">Arthur</a></p>
+        <p><span>发布时间:</span>2017年06月19日 - 14时29分</p>
+        <p><span>最后更新:</span>2017年06月19日 - 15时24分</p>
+        <p>
+            <span>原始链接:</span><a class="post-url" href="/2017/06/19/JDKCode-1/" title="HashMap源码阅读笔记（基于jdk1.8）">http://yoursite.com/2017/06/19/JDKCode-1/</a>
+            <span class="copy-path" data-clipboard-text="原文: http://yoursite.com/2017/06/19/JDKCode-1/　　作者: Arthur" title=""></span>
+        </p>
+        <p>
+            <span>许可协议:</span><i class="fa fa-creative-commons"></i> <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/cn/" title="中国大陆 (CC BY-NC-SA 3.0 CN)" target = "_blank">"署名-非商用-相同方式共享 3.0"</a> 转载请保留原文链接及作者。
+        </p>
+    </div>
+
+
+
+<nav id="article-nav">
+  
+    <a  href="/2017/06/19/JDKCode-2/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption"><</strong>
+      <div class="article-nav-title">
+        
+          LinkedHashMap源码阅读笔记（基于jdk1.8）
+        
+      </div>
+    </a>
+  
+  
+    <a  href="/2017/06/15/mybatis-12/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">MyBatis源码解析：动态SQL</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+
+  
+</article>
+
+    <div id="toc" class="toc-article">
+    <strong class="toc-title">文章目录</strong>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#HashMap概述"><span class="toc-number">1.</span> <span class="toc-text">HashMap概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HashMap实现原理"><span class="toc-number">2.</span> <span class="toc-text">HashMap实现原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HashMap的存取"><span class="toc-number">3.</span> <span class="toc-text">HashMap的存取</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#存储"><span class="toc-number">3.1.</span> <span class="toc-text">存储</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#扩容"><span class="toc-number">3.2.</span> <span class="toc-text">扩容</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#链表转换为红黑树"><span class="toc-number">3.3.</span> <span class="toc-text">链表转换为红黑树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Map克隆"><span class="toc-number">3.4.</span> <span class="toc-text">Map克隆</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#读取"><span class="toc-number">3.5.</span> <span class="toc-text">读取</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#迭代器"><span class="toc-number">3.6.</span> <span class="toc-text">迭代器</span></a></li></ol></li></ol>
+</div>
+<style>
+    .left-col .switch-btn {
+        display: none;
+    }
+    .left-col .switch-area {
+        display: none;
+    }
+</style>
+<input type="button" id="tocButton" value="隐藏目录"  title="点击按钮隐藏或者显示文章目录">
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
+<script>
+    var valueHide = "隐藏目录";
+    var valueShow = "显示目录";
+    if ($(".left-col").is(":hidden")) {
+        $("#tocButton").attr("value", valueShow);
+    }
+    $("#tocButton").click(function() {
+        if ($("#toc").is(":hidden")) {
+            $("#tocButton").attr("value", valueHide);
+            $("#toc").slideDown(320);
+            $(".switch-btn, .switch-area").fadeOut(300);
+        }
+        else {
+            $("#tocButton").attr("value", valueShow);
+            $("#toc").slideUp(350);
+            $(".switch-btn, .switch-area").fadeIn(500);
+        }
+    })
+    if ($(".toc").length < 1) {
+        $("#toc, #tocButton").hide();
+        $(".switch-btn, .switch-area").show();
+    }
+</script>
+
+
+
+
+<div class="bdsharebuttonbox">
+	<a href="#" class="fx fa-weibo bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a>
+	<a href="#" class="fx fa-weixin bds_weixin" data-cmd="weixin" title="分享到微信"></a>
+	<a href="#" class="fx fa-qq bds_sqq" data-cmd="sqq" title="分享到QQ好友"></a>
+	<a href="#" class="fx fa-facebook-official bds_fbook" data-cmd="fbook" title="分享到Facebook"></a>
+	<a href="#" class="fx fa-twitter bds_twi" data-cmd="twi" title="分享到Twitter"></a>
+	<a href="#" class="fx fa-linkedin bds_linkedin" data-cmd="linkedin" title="分享到linkedin"></a>
+	<a href="#" class="fx fa-files-o bds_copy" data-cmd="copy" title="分享到复制网址"></a>
+</div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":false,"bdPic":"","bdStyle":"2","bdSize":"24"},"share":{}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+
+
+
+    
+        <section class="changyan" id="comments">
+  <!--<div id="uyan_frame"></div>-->
+  <div id="SOHUCS"></div>
+  <script charset="utf-8" type="text/javascript" src="https://changyan.sohu.com/upload/changyan.js"></script>
+  <script type="text/javascript">
+    window.changyan.api.config({
+      appid: 'xxxx',
+      conf: 'xxxxxxxxx'
+    });
+  </script>
+</section>
+    
+
+
+
+    <div class="scroll" id="post-nav-button">
+        
+            <a  href="/2017/06/19/JDKCode-2/" title="上一篇: LinkedHashMap源码阅读笔记（基于jdk1.8）">
+                <i class="fa fa-angle-left"></i>
+            </a>
+        
+        <a title="文章列表"><i class="fa fa-bars"></i><i class="fa fa-times"></i></a>
+        
+            <a  href="/2017/06/15/mybatis-12/" title="下一篇: MyBatis源码解析：动态SQL">
+                <i class="fa fa-angle-right"></i>
+            </a>
+        
+    </div>
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/AVL/">AVL树的平衡算法（JAVA实现）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-4/">LinkedList源码阅读笔记（基于JDK1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-3/">ArrayList源码阅读笔记(基于JDk1.8)</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-2/">LinkedHashMap源码阅读笔记（基于jdk1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-1/">HashMap源码阅读笔记（基于jdk1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li></ul>
+    <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
+    <script>
+        $(".post-list").addClass("toc-article");
+        // $(".post-list-item a").attr("target","_blank");
+        $("#post-nav-button > a:nth-child(2)").click(function() {
+            $(".fa-bars, .fa-times").toggle();
+            $(".post-list").toggle(300);
+            if ($(".toc").length > 0) {
+                $("#toc, #tocButton").toggle(200, function() {
+                    if ($(".switch-area").is(":visible")) {
+                        $("#toc, .switch-btn, .switch-area").toggle();
+                        $("#tocButton").attr("value", valueHide);
+                        }
+                    })
+            }
+            else {
+                $(".switch-btn, .switch-area").fadeToggle(300);
+            }
+        })
+    </script>
+
+
+
+
+    <script>
+        
+    </script>
+
+</div>
+      <footer id="footer">
+    <div class="outer">
+        <div id="footer-info">
+            <div class="footer-left">
+                &copy; 2017 Arthur
+            </div>
+            <div class="footer-right">
+                <a href="http://hexo.io/" target="_blank">Hexo</a>
+            </div>
+        </div>
+        
+            <div class="visit">
+                
+                    <span id="busuanzi_container_site_pv" style='display:none'>
+                        <span id="site-visit" >极客到访数: 
+                            <span id="busuanzi_value_site_uv"></span>
+                        </span>
+                    </span>
+                
+                
+                    <span>, </span>
+                
+                
+                    <span id="busuanzi_container_page_pv" style='display:none'>
+                        <span id="page-visit">本页阅读量: 
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    </span>
+                
+            </div>
+        
+    </div>
+</footer>
+
+    </div>
+    <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
+<script src="/js/main.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            var backgroundnum = 4;
+            var backgroundimg = "url(/background/bg-x.jpg)".replace(/x/gi, Math.ceil(Math.random() * backgroundnum));
+            $("#mobile-nav").css({"background-image": backgroundimg,"background-size": "cover","background-position": "center"});
+            $(".left-col").css({"background-image": backgroundimg,"background-size": "cover","background-position": "center"});
+        })
+    </script>
+
+
+<!-- Google Analytics -->
+<script type="text/javascript">
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'xxxxx', 'auto');
+ga('send', 'pageview');
+
+</script>
+<!-- End Google Analytics -->
+
+
+
+	<script>
+	var _hmt = _hmt || [];
+	(function() {
+	  var hm = document.createElement("script");
+	  hm.src = "//hm.baidu.com/hm.js?xxxxxx";
+	  var s = document.getElementsByTagName("script")[0]; 
+	  s.parentNode.insertBefore(hm, s);
+	})();
+	</script>
+
+
+
+<div class="scroll" id="scroll">
+    <a href="#"><i class="fa fa-arrow-up"></i></a>
+    <a href="#comments"><i class="fa fa-comments-o"></i></a>
+    <a href="#footer"><i class="fa fa-arrow-down"></i></a>
+</div>
+<script>
+    $(document).ready(function() {
+        if ($("#comments").length < 1) {
+            $("#scroll > a:nth-child(2)").hide();
+        };
+    })
+</script>
+
+<script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js">
+</script>
+
+  <script language="javascript">
+    $(function() {
+        $("a[title]").each(function() {
+            var a = $(this);
+            var title = a.attr('title');
+            if (title == undefined || title == "") return;
+            a.data('title', title).removeAttr('title').hover(
+            function() {
+                var offset = a.offset();
+                $("<div id=\"anchortitlecontainer\"></div>").appendTo($("body")).html(title).css({
+                    top: offset.top - a.outerHeight() - 15,
+                    left: offset.left + a.outerWidth()/2 + 1
+                }).fadeIn(function() {
+                    var pop = $(this);
+                    setTimeout(function() {
+                        pop.remove();
+                    }, pop.text().length * 800);
+                });
+            }, function() {
+                $("#anchortitlecontainer").remove();
+            });
+        });
+    });
+</script>
+
+
+  </div>
+</body>
+</html>

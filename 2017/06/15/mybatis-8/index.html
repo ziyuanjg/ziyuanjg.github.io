@@ -9,22 +9,22 @@
   
   <title>MyBatis源码解析：Mybatis的缓存机制 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。 1. 缓存的作用　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的">
+  <meta name="description" content="俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。 缓存的作用　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放">
 <meta name="keywords" content="MyBatis">
 <meta property="og:type" content="article">
 <meta property="og:title" content="MyBatis源码解析：Mybatis的缓存机制">
 <meta property="og:url" content="http://yoursite.com/2017/06/15/mybatis-8/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。 1. 缓存的作用　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的">
+<meta property="og:description" content="俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。 缓存的作用　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放">
 <meta property="og:image" content="http://yoursite.com/images/mybatis_9.png">
 <meta property="og:image" content="http://yoursite.com/images/mybatis_10.png">
 <meta property="og:image" content="http://yoursite.com/images/mybatis_11.png">
 <meta property="og:image" content="http://yoursite.com/images/mybatis_12.png">
 <meta property="og:image" content="http://yoursite.com/images/mybatis_13.png">
-<meta property="og:updated_time" content="2017-06-15T08:53:15.722Z">
+<meta property="og:updated_time" content="2017-06-19T07:47:19.189Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="MyBatis源码解析：Mybatis的缓存机制">
-<meta name="twitter:description" content="俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。 1. 缓存的作用　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的">
+<meta name="twitter:description" content="俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。 缓存的作用　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放">
 <meta name="twitter:image" content="http://yoursite.com/images/mybatis_9.png">
   
     <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
@@ -193,7 +193,7 @@
                 
                 <section class="switch-part switch-part2">
                     <div class="widget tagcloud" id="js-tagcloud">
-                        <a href="/tags/MyBatis/" style="font-size: 10px;">MyBatis</a>
+                        <a href="/tags/JDKCode/" style="font-size: 15px;">JDKCode</a> <a href="/tags/MyBatis/" style="font-size: 20px;">MyBatis</a> <a href="/tags/算法/" style="font-size: 10px;">算法</a>
                     </div>
                 </section>
                 
@@ -305,10 +305,10 @@
       
           
         <p>　　俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。</p>
-<h1 id="1-缓存的作用"><a href="#1-缓存的作用" class="headerlink" title="1. 缓存的作用"></a>1. 缓存的作用</h1><p>　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。<br><a id="more"></a></p>
-<h1 id="2-Cache"><a href="#2-Cache" class="headerlink" title="2. Cache"></a>2. Cache</h1><p>　　MyBatis的缓存基础是PerpetualCache，PerpetualCache实现了Cache接口，内部其实是维护了一个HashMap对象进行数据的缓存，下面看下Cache的家族树：<br><img src="/images/mybatis_9.png" alt=""></p>
+<h2 id="缓存的作用"><a href="#缓存的作用" class="headerlink" title="缓存的作用"></a>缓存的作用</h2><p>　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。<br><a id="more"></a></p>
+<h2 id="Cache"><a href="#Cache" class="headerlink" title="Cache"></a>Cache</h2><p>　　MyBatis的缓存基础是PerpetualCache，PerpetualCache实现了Cache接口，内部其实是维护了一个HashMap对象进行数据的缓存，下面看下Cache的家族树：<br><img src="/images/mybatis_9.png" alt=""></p>
 <p>乍一看哎呦喂，挺多实现类啊，其实这里使用了装饰者模式，其他的实现类都是装饰了PerpetualCache类。</p>
-<h1 id="3-一级缓存"><a href="#3-一级缓存" class="headerlink" title="3. 一级缓存"></a>3. 一级缓存</h1><p>　　MyBatis的一级缓存默认就是开启的（想关都关不掉），我们能做的就是设置一下他的生命周期，配置如下：</p>
+<h2 id="一级缓存"><a href="#一级缓存" class="headerlink" title="一级缓存"></a>一级缓存</h2><p>　　MyBatis的一级缓存默认就是开启的（想关都关不掉），我们能做的就是设置一下他的生命周期，配置如下：</p>
 <pre><code>&lt;settings&gt;
      &lt;setting name=&quot;localCacheScope&quot; value=&quot;SESSION|STATEMENT&quot; /&gt;
  &lt;/settings&gt;
@@ -330,7 +330,7 @@ if (list != null) {
      list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
 }
 </code></pre><p>　　正确的使用缓存确实能提高不少性能，但是这里就引出了一个新问题，如果我缓存的数据过期了怎么办？对于一些时效性不强的模块中有一些脏数据或许不会影响使用，但是对于要求数据时效性很强的系统中就不能这么玩了，所以MyBatis提供了手动配置刷新时机的方法。</p>
-<p>一共有五个触发方法会刷新一级缓存：</p>
+<p>一共有四个触发方法会刷新一级缓存：</p>
 <ul>
 <li>commit</li>
 <li>rollback</li>
@@ -417,24 +417,24 @@ if (list != null) {
     updateList.add(object);
   }
 </code></pre><p>　　说了这么多，那么一级缓存的性能如何呢？<br>　　从空间角度来看，一级缓存只是简单的使用的HashMap进行维护，并且没有对Has和Map的容量进行限制，这时候可能就有小伙伴会问了，这岂不是会占用很多内存吗，哪个渣渣写的代码，拖出去斩了=。=。MyBatis确实没在空间方面做硬性限制，但是呢在操作方式上其实还是有软限制的，一级缓存的生存周期是一个SqlSession会话，通常情况下每个request会新建一个SqlSession，一个request能执行多长时间（如果您的项目对SqlSession使用单例实现，请默默点击右上角的叉叉，笑），而且呢就算是这个SqlSession生活节奏比较慢，就是拖着不让回收也没问题，每次执行update操作的时候MyBatis会清空一次一级缓存，更极端点就算是这个死拖着不走的SqlSession全是查询操作，不还是可以手动清理缓存区的么（笑）。<br>从时间的角度看，MyBatis的一级缓存是粗粒度的，没有缓存过期的概念，也就是不会主动请求数据源对缓存进行更新，<br>由上面两点来看呢，一级缓存的一点不泛用性就展现出来了，对于数据变化的频率高，且对数据时效性要求高的业务来说就要控制每个SqlSession的生存时间了，时间越长缓存中的数据的准确性就越低了。</p>
-<h1 id="4-二级缓存"><a href="#4-二级缓存" class="headerlink" title="4. 二级缓存"></a>4. 二级缓存</h1><p>　　一级缓存是在一个SqlSession会话的周期内有效，那么不同的SqlSession想一起玩怎么办呢，这时候就用到了二级缓存。<br><img src="/images/mybatis_13.png" alt=""></p>
-<p>二级缓存简单来说就是在Configuration中维护的一个HashMap集合，MyBatis默认使用的和一级缓存一样是PerpetualCache这个实现（只不过使用TransactionalCache装饰了一下），与一级缓存不同，二级缓存是需要手动开启的，要使用二级缓存需要以下两个步骤：</p>
+<h2 id="二级缓存"><a href="#二级缓存" class="headerlink" title="二级缓存"></a>二级缓存</h2><p>　　一级缓存是在一个SqlSession会话的周期内有效，那么不同的SqlSession想一起玩怎么办呢，这时候就用到了二级缓存。<br><img src="/images/mybatis_13.png" alt=""></p>
+<p>　　二级缓存简单来说就是在Configuration中维护的一个HashMap集合，MyBatis默认使用的和一级缓存一样是PerpetualCache这个实现（只不过使用TransactionalCache装饰了一下），与一级缓存不同，二级缓存是需要手动开启的，要使用二级缓存需要以下两个步骤：</p>
 <ul>
-<li><p>配置config.xml：</p>
-  <setting name="cacheEnabled" value="true">
-</setting></li>
-<li><p>配置mapper.xml：</p>
-<p>  <cache></cache><cache-ref namespace="daoMapper.UserMapper"></cache-ref></p>
-</li>
+<li>配置config.xml：</li>
 </ul>
-<p>由上面可知，mapper有两种配置方式，其中cache标签是声明此mapper使用二级缓存，具体参数如下：</p>
+<pre><code>&lt;setting name=&quot;cacheEnabled&quot; value=&quot;true&quot;/&gt;
+</code></pre><ul>
+<li>配置mapper.xml：</li>
+</ul>
+<pre><code>&lt;cache&gt;&lt;/cache&gt;&lt;cache-ref namespace=&quot;daoMapper.UserMapper&quot;/&gt;
+</code></pre><p>由上面可知，mapper有两种配置方式，其中cache标签是声明此mapper使用二级缓存，具体参数如下：</p>
 <ul>
 <li>eviction：缓存刷新机制，默认可用的回收策略有四种，LRU（清理最近最少使用的缓存）、FIFO（先进先出）、SOFT（ 软引用:移除基于垃圾回收器状态和软引用规则的对象）和WEAK（更积极地移除基于垃圾收集器状态和弱引用规则的对象。）</li>
 <li>flushInterval：刷新间隔，可以被设置为任意的正整数,而且它们代表一个合理的毫秒 形式的时间段。默认情况是不设置,也就是没有刷新间隔,缓存仅仅调用语句时刷新。</li>
 <li>size：引用数目，可以被设置为任意正整数,要记住你缓存的对象数目和你运行环境的 可用内存资源数目。默认值是 1024。</li>
 <li>readOnly：只读属性，可以被设置为 true 或 false。只读的缓存会给所有调用者返回缓 存对象的相同实例。因此这些对象不能被修改。这提供了很重要的性能优势。可读写的缓存 会返回缓存对象的拷贝(通过序列化) 。这会慢一些,但是安全,因此默认是 false。</li>
 </ul>
-<p>一级缓存是在BaseExecutor中进行操作，那二级缓存想要在一级之前调用自然就要在上一级了，MyBatis采用的是装饰器模式，当cacheEnabled设置为true时，默认创建的Executor实例都会用cacheEnabled进行装饰，下面看下cacheEnabled的查询源码：</p>
+<p>　　一级缓存是在BaseExecutor中进行操作，那二级缓存想要在一级之前调用自然就要在上一级了，MyBatis采用的是装饰器模式，当cacheEnabled设置为true时，默认创建的Executor实例都会用cacheEnabled进行装饰，下面看下cacheEnabled的查询源码：</p>
 <pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
      throws SQLException {
    Cache cache = ms.getCache();
@@ -458,7 +458,7 @@ if (list != null) {
    //如果MappedStatement配置不使用缓存则直接调用delegate进行查询
    return delegate.&lt;E&gt; query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
  }
-</code></pre><p>这里的List<e> list = (List<e>) tcm.getObject(cache, key);是重点，画一下，考试要考，咳咳。<br>此处可以看出cache其实是从MappedStatement中取出的，正是因为MappedStatement在MyBatis初始化时就全部创建完毕，所以不会和SqlSession的生命周期挂钩。下面看下之后的方法：</e></e></p>
+</code></pre><p>这里的List<e> list = (List<e>) tcm.getObject(cache, key);是重点，画一下，考试要考，咳咳。<br>　　此处可以看出cache其实是从MappedStatement中取出的，正是因为MappedStatement在MyBatis初始化时就全部创建完毕，所以不会和SqlSession的生命周期挂钩。下面看下之后的方法：</e></e></p>
 <pre><code>public Object getObject(Cache cache, CacheKey key) {
     return getTransactionalCache(cache).getObject(key);
   }
@@ -485,7 +485,7 @@ private TransactionalCache getTransactionalCache(Cache cache) {
       return object;
     }
   }
-</code></pre><p>上面说了二级缓存是从MappedStatement取出的，那么现在就来找一下二级缓存是如何创建的，之前讲创建SqlSessionFactory的过程时有提到过解析xml配置文件的方法，既然二级缓存的开关是在mapper.xml文件中，那么创建二级缓存的入口自然要落在解析mapper的方法中，下面来看下源码：</p>
+</code></pre><p>　　上面说了二级缓存是从MappedStatement取出的，那么现在就来找一下二级缓存是如何创建的，之前讲创建SqlSessionFactory的过程时有提到过解析xml配置文件的方法，既然二级缓存的开关是在mapper.xml文件中，那么创建二级缓存的入口自然要落在解析mapper的方法中，下面来看下源码：</p>
 <pre><code>private void cacheElement(XNode context) throws Exception {
     if (context != null) {
       //自定义缓存类型
@@ -562,7 +562,7 @@ public Cache build() {
         <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></p>
         <p><span>文章作者:</span><a  href="/" title="访问 Arthur 的个人博客">Arthur</a></p>
         <p><span>发布时间:</span>2017年06月15日 - 15时16分</p>
-        <p><span>最后更新:</span>2017年06月15日 - 16时53分</p>
+        <p><span>最后更新:</span>2017年06月19日 - 15时47分</p>
         <p>
             <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-8/" title="MyBatis源码解析：Mybatis的缓存机制">http://yoursite.com/2017/06/15/mybatis-8/</a>
             <span class="copy-path" data-clipboard-text="原文: http://yoursite.com/2017/06/15/mybatis-8/　　作者: Arthur" title=""></span>
@@ -599,7 +599,7 @@ public Cache build() {
 
     <div id="toc" class="toc-article">
     <strong class="toc-title">文章目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-缓存的作用"><span class="toc-number">1.</span> <span class="toc-text">1. 缓存的作用</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-Cache"><span class="toc-number">2.</span> <span class="toc-text">2. Cache</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-一级缓存"><span class="toc-number">3.</span> <span class="toc-text">3. 一级缓存</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-二级缓存"><span class="toc-number">4.</span> <span class="toc-text">4. 二级缓存</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#缓存的作用"><span class="toc-number">1.</span> <span class="toc-text">缓存的作用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Cache"><span class="toc-number">2.</span> <span class="toc-text">Cache</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#一级缓存"><span class="toc-number">3.</span> <span class="toc-text">一级缓存</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#二级缓存"><span class="toc-number">4.</span> <span class="toc-text">二级缓存</span></a></li></ol>
 </div>
 <style>
     .left-col .switch-btn {
@@ -681,7 +681,7 @@ public Cache build() {
             </a>
         
     </div>
-    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li></ul>
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/AVL/">AVL树的平衡算法（JAVA实现）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-4/">LinkedList源码阅读笔记（基于JDK1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-3/">ArrayList源码阅读笔记(基于JDk1.8)</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-2/">LinkedHashMap源码阅读笔记（基于jdk1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-1/">HashMap源码阅读笔记（基于jdk1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li></ul>
     <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
     <script>
         $(".post-list").addClass("toc-article");

@@ -4,14 +4,14 @@ date: 2017-06-15 15:16:44
 tags: MyBatis
 ---
 
-　　现在要说第三个苦力ResultSetHandler（负责处理结果集映射）了，还记得在mapper配置中有一个标签叫resultMap，还有一个叫resultType，这两个标签就是这个时候用的了。
-　　ResultSetHandler接口只有一个默认的实现类，下面我们来看看关键的几个方法：
+　　现在要说第三个苦力ResultSetHandler（负责处理结果集映射）了，还记得在mapper配置中有一个标签叫resultMap，还有一个叫resultType，这两个标签就是这个时候用的了。ResultSetHandler接口只有一个默认的实现类，下面我们来看看关键的几个方法：
 <!-- more -->
+
 	/**
-	   * 依照配置的返回类型映射查询结果集
-	   */
-	  @Override
-	  public List<Object> handleResultSets(Statement stmt) throws SQLException {
+	 * 依照配置的返回类型映射查询结果集
+	 */
+	 @Override
+	 public List<Object> handleResultSets(Statement stmt) throws SQLException {
 	    ErrorContext.instance().activity("handling results").object(mappedStatement.getId());
 
 	    final List<Object> multipleResults = new ArrayList<Object>();
@@ -62,9 +62,9 @@ tags: MyBatis
 	  }
 
 	/**
-	   * 按照规则映射结果集数据
-	   */
-	  private void handleResultSet(ResultSetWrapper rsw, ResultMap resultMap, List<Object> multipleResults, ResultMapping parentMapping) throws SQLException {
+	 * 按照规则映射结果集数据
+	 */
+	private void handleResultSet(ResultSetWrapper rsw, ResultMap resultMap, List<Object> multipleResults, ResultMapping parentMapping) throws SQLException {
 	    try {
 	      //parentMapping不为空是指嵌套结果集，在mapper配置中的resultMap标签控制
 	      if (parentMapping != null) {
@@ -87,9 +87,9 @@ tags: MyBatis
 	    }
 	  }
 	/**
-	   * 映射数据
-	   */
-	  public void handleRowValues(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler<?> resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
+	 * 映射数据
+	 */
+	public void handleRowValues(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler<?> resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
 		if (resultMap.hasNestedResultMaps()) {
 	      ensureNoRowBounds();
 	      checkResultHandler();
@@ -101,9 +101,9 @@ tags: MyBatis
 	    }
 	  }
 	/**
-	  * 映射嵌套结果集
-	  */
-	  private void handleRowValuesForNestedResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler<?> resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
+	 * 映射嵌套结果集
+	 */
+	private void handleRowValuesForNestedResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler<?> resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
 	    //创建结果集上下文对象
 		final DefaultResultContext<Object> resultContext = new DefaultResultContext<Object>();
 	    //跳过rowBounds指定offset行偏移量
@@ -141,9 +141,9 @@ tags: MyBatis
 	    }
 	  }
 	/**
-	   * 简单结果集的绑定行数据方法
-	   */
-	  private void handleRowValuesForSimpleResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler<?> resultHandler, RowBounds rowBounds, ResultMapping parentMapping)
+	 * 简单结果集的绑定行数据方法
+	 */
+	private void handleRowValuesForSimpleResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler<?> resultHandler, RowBounds rowBounds, ResultMapping parentMapping)
 	      throws SQLException {
 	    DefaultResultContext<Object> resultContext = new DefaultResultContext<Object>();
 	    //跳过rowBounds指定offset行偏移量

@@ -3,9 +3,1188 @@
   
     
     <entry>
+      <title><![CDATA[AVL树的平衡算法（JAVA实现）]]></title>
+      <url>/2017/06/19/AVL/</url>
+      <content type="html"><![CDATA[<h2 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h2><p>　　AVL树本质上还是一个二叉搜索树，不过比二叉搜索树多了一个平衡条件：每个节点的左右子树的高度差不大于1。二叉树的应用是为了弥补链表的查询效率问题，但是极端情况下，二叉搜索树会无限接近于链表，这种时候就无法体现二叉搜索树在查询时的高效率，而最初出现的解决方式就是AVL树。如下图：<br><a id="more"></a><br><img src="/images/mybatis_30.png" alt=""></p>
+<h2 id="旋转"><a href="#旋转" class="headerlink" title="旋转"></a>旋转</h2><p>　　说到AVL树就不得不提到树的旋转，旋转是AVL维持平衡的方式，主要有以下四种类型。</p>
+<h3 id="左左旋转"><a href="#左左旋转" class="headerlink" title="左左旋转"></a>左左旋转</h3><p>　　如图2-1所示，此时A节点的左树与右树的高度差为2，不符合AVL的定义，此时以B节点为轴心，AB间连线为转轴，将A节点旋转至B节点下方，由B节点的父节点变成子节点。实现所有节点的左右子树高度差小于等于1。如图2-2。<br><img src="/images/mybatis_31.png" alt=""></p>
+<h3 id="右右旋转"><a href="#右右旋转" class="headerlink" title="右右旋转"></a>右右旋转</h3><p>　　右右旋转与左左旋转类似，但是动作相反，如图2-3，2-4所示，以B节点为轴心，BC间连线为轴，将C节点旋转至B下方，成为B的子节点。实现所有节点的左右子树高度差小于等于1。<br><img src="/images/mybatis_32.png" alt=""></p>
+<h3 id="左右旋转"><a href="#左右旋转" class="headerlink" title="左右旋转"></a>左右旋转</h3><p>　　左右旋转稍复杂一点，需要旋转两次，如果用左左旋转的方式直接旋转图2-5中的树，会变成图2-8的样子，此时B节点的左右子树高度差依然没有平衡，所以要先对2-5的树做一步处理，就是以BC为轴，将C节点旋转至B节点的位置，如图2-6所示，此时就将树转换成了左左旋转的场景，之后使用左左旋转即可完成平衡。<br><img src="/images/mybatis_33.png" alt=""></p>
+<h3 id="右左旋转"><a href="#右左旋转" class="headerlink" title="右左旋转"></a>右左旋转</h3><p>　　右左旋转与左右旋转类似，也是旋转两次。如下图，具体细节请看下面的代码详解。<br><img src="/images/mybatis_34.png" alt=""></p>
+<h2 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h2><h3 id="新增"><a href="#新增" class="headerlink" title="新增"></a>新增</h3><p>　　二叉树的插入不在赘述，这里只分析插入时的平衡方法。如果新增节点没有兄弟节点时会引起树的高度变化，此时需要对上层节点的平衡值进行修改，如果出现了不平衡树，则需要调用平衡方法，代码如下：</p>
+<pre><code>private void balance(Node node){
+    Node parent = node.getParent();
+    Node node_middle = node;
+    Node node_prev = node;
+
+    Boolean avl = true;
+    do{
+        if(node_middle == parent.getLeft() &amp;&amp; (-1 &lt;= parent.getAVL()-1 &amp;&amp; parent.getAVL()-1 &lt;= 1)){
+            //node_middle为parent的左树，此时parent左树高度+1不会造成不平衡。
+            parent.subAVL();
+            node_prev = node_middle;
+            node_middle = parent;
+            //由于上面对parent的平衡值进行了修改，如果修改后的平衡值为0，说明此时parent节点的高度没有改变，之前较短的左树高度+1，变为与右树高度相同。
+            if(parent != null &amp;&amp; parent.getAVL() == 0)
+                parent = null;
+            else
+                parent = parent.getParent();
+        }else if(node_middle == parent.getRight() &amp;&amp; (-1 &lt;= parent.getAVL()+1 &amp;&amp; parent.getAVL()+1 &lt;= 1)){
+            //node_middle为parent的右树，此时parent右树高度+1不会造成不平衡。
+            parent.addAVL();
+            node_prev = node_middle;
+            node_middle = parent;
+            //由于上面对parent的平衡值进行了修改，如果修改后的平衡值为0，说明此时parent节点的高度没有改变，之前较短的右树高度+1，变为与左树高度相同。
+            if(parent != null &amp;&amp; parent.getAVL() == 0)
+                parent = null;
+            else
+                parent = parent.getParent();
+        }else{//出现最小不平衡节点，新增时不需要考虑更高节点，所以直接中断循环，调用平衡方法
+            avl = false;
+        }
+    }while(parent != null &amp;&amp; avl);
+
+    if(parent == null){
+        return;
+    }
+    //选择相应的旋转方式
+    chooseCalculation(parent, node_middle, node_prev);
+}
+</code></pre><h3 id="删除"><a href="#删除" class="headerlink" title="删除"></a>删除</h3><p>　　删除较新增复杂一些，主要是因为存在一次旋转无法达到平衡效果的情况，而且删除本身也分为三种情况，分别是：</p>
+<h4 id="删除叶子节点"><a href="#删除叶子节点" class="headerlink" title="删除叶子节点"></a>删除叶子节点</h4><p>　　由于叶子节点没有子树，不涉及替换的问题，所以直接删除即可，如果删除节点没有兄弟节点会引起高度变化，此时依次对父级节点的平衡值做对应修改，如果出现不平衡树则要进行旋转。</p>
+<h4 id="删除节点存在一个子节点"><a href="#删除节点存在一个子节点" class="headerlink" title="删除节点存在一个子节点"></a>删除节点存在一个子节点</h4><p>　　此时将子节点上移，替换删除节点的位置，这个操作势必会造成所在子树的高度变化，所以需要依次对父级节点的平衡值做对应修该，如果出现不平衡树进行旋转操作。</p>
+<h4 id="删除节点存在两个子节点"><a href="#删除节点存在两个子节点" class="headerlink" title="删除节点存在两个子节点"></a>删除节点存在两个子节点</h4><p>　　这种情况比较复杂，由于存在两个子节点，所以不能简单的将其中一个子节点提高一级，因此需要在节点的子树中搜索一个合适的节点进行替换，之前自己构思的时候选择的是搜寻一个最长子树的最接近删除节点的值的叶子节点，具体实现的时候发现需要考虑的场景太多，并不适合，参考算法导论上的思路后改成了搜寻左树的最大节点，此时只需考虑左树的情况即可。实现方法如下：</p>
+<pre><code>public void deleteNode(int item){
+
+    Node node = get(item);
+    if(node == null)
+        return;
+    Node parent = node.getParent();
+    if(!node.hasChild()){                                                //叶子节点
+        if(parent == null){                                                //删除最后节点
+            root = null;
+            return;
+        }
+        if(node.hasBrother()){                                            //node有兄弟节点时，需要判断是否需要调用平衡方法
+            if(node == parent.getLeft())
+                isBalance(node, 1);
+            else
+                isBalance(node, -1);
+            parent.deleteChildNode(node);
+        }else{                                                            //node没有兄弟节点时，高度减一，需要进行平衡
+            deleteAvl(node);
+            parent.deleteChildNode(node);
+        }
+    }else if(node.getLeft() != null &amp;&amp; node.getRight() == null){        //有一个子节点时，将子节点上移一位，然后进行平衡即可
+        if(parent == null){                                                //删除的是根节点
+            root = node;
+            return;
+        }
+        if(node == parent.getLeft()){
+            parent.setLeft(node.getLeft());
+        }else{
+            parent.setRight(node.getLeft());
+        }
+        node.getLeft().setParent(parent);
+        deleteAvl(node.getLeft());
+    }else if(node.getLeft() == null &amp;&amp; node.getRight() != null){        //有一个子节点时，将子节点上移一位，然后进行平衡即可
+        if(parent == null){                                                //删除的是根节点
+            root = node;
+            return;
+        }
+        if(node == parent.getRight()){
+            parent.setRight(node.getRight());
+        }else{
+            parent.setLeft(node.getRight());
+        }
+        node.getRight().setParent(parent);
+        deleteAvl(node.getRight());
+    }
+    else{                                                                //有两个子节点时，先在节点左树寻找最大节点last，然后删除last，最后将被删除节点的value替换为last的value
+        Node last = findLastNode(node);
+        int tmp = last.getValue();
+        deleteNode(last.getValue());
+        node.setValue(tmp);
+    }
+    node = null;                                                        //GC
+}
+</code></pre><h3 id="旋转-1"><a href="#旋转-1" class="headerlink" title="旋转"></a>旋转</h3><h4 id="左左旋转-1"><a href="#左左旋转-1" class="headerlink" title="左左旋转"></a>左左旋转</h4><pre><code>private void LeftLeftRotate(Node node){
+
+    Node parent = node.getParent();
+
+    if(parent.getParent() != null &amp;&amp; parent == parent.getParent().getLeft()){
+        node.setParent(parent.getParent());
+        parent.getParent().setLeft(node);
+    }else if(parent.getParent() != null &amp;&amp; parent == parent.getParent().getRight()){
+        node.setParent(parent.getParent());
+        parent.getParent().setRight(node);
+    }else{
+        root = node;
+        node.setParent(null);
+    }
+    parent.setParent(node);
+    parent.setLeft(node.getRight());
+    if(node.getRight() != null)
+        node.getRight().setParent(parent);
+    node.setRight(parent);
+
+    if(node.getAVL() == -1){                                        //只有左节点时，parent转换后没有子节点
+        parent.setAVL(0);
+        node.setAVL(0);
+    }else if(node.getAVL() == 0){                                    //node有两个子节点，转换后parent有一个左节点
+        parent.setAVL(-1);
+        node.setAVL(1);
+    }                                                                //node.getAVL()为1时会调用左右旋转
+}
+</code></pre><h4 id="右右旋转-1"><a href="#右右旋转-1" class="headerlink" title="右右旋转"></a>右右旋转</h4><pre><code>private void RightRightRotate(Node node){
+
+    Node parent = node.getParent();
+
+    if(parent.getParent() != null &amp;&amp; parent == parent.getParent().getLeft()){
+        node.setParent(parent.getParent());
+        parent.getParent().setLeft(node);
+    }else if(parent.getParent() != null &amp;&amp; parent == parent.getParent().getRight()){
+        node.setParent(parent.getParent());
+        parent.getParent().setRight(node);
+    }else{
+        root = node;
+        node.setParent(null);
+    }
+    parent.setParent(node);
+    parent.setRight(node.getLeft());
+    if(node.getLeft() != null)
+        node.getLeft().setParent(parent);
+    node.setLeft(parent);
+
+    if(node.getAVL() == 1){
+        node.setAVL(0);
+        parent.setAVL(0);
+    }else if(node.getAVL() == 0){                                    //当node有两个节点时，转换后层数不会更改，左树比右树高1层，parent的右树比左树高一层
+        parent.setAVL(1);
+        node.setAVL(-1);
+    }
+}
+</code></pre><h4 id="左右旋转-1"><a href="#左右旋转-1" class="headerlink" title="左右旋转"></a>左右旋转</h4><pre><code>private void LeftRightRotate(Node node){
+
+    Node parent = node.getParent();
+    Node child = node.getRight();
+
+    //左右旋转时node的avl必为1，所以只需考虑child的avl
+    if(!child.hasChild()){
+        node.setAVL(0);
+        parent.setAVL(0);
+    }else if(child.getAVL() == -1){
+        node.setAVL(0);
+        parent.setAVL(1);
+    }else if(child.getAVL() == 1){
+        node.setAVL(-1);
+        parent.setAVL(0);
+    }else if(child.getAVL() == 0){
+        node.setAVL(0);
+        parent.setAVL(0);
+    }
+    child.setAVL(0);
+
+    //第一次交换
+    parent.setLeft(child);
+    node.setParent(child);
+    node.setRight(child.getLeft());
+    if(child.getLeft() != null)
+        child.getLeft().setParent(node);
+    child.setLeft(node);
+    child.setParent(parent);
+
+    //第二次交换
+    if(parent.getParent() != null &amp;&amp; parent == parent.getParent().getLeft()){
+        child.setParent(parent.getParent());
+        parent.getParent().setLeft(child);
+    }else if(parent.getParent() != null &amp;&amp; parent == parent.getParent().getRight()){
+        child.setParent(parent.getParent());
+        parent.getParent().setRight(child);
+    }else{
+        root = child;
+        child.setParent(null);
+    }
+    parent.setParent(child);
+    parent.setLeft(child.getRight());
+    if(child.getRight() != null)
+        child.getRight().setParent(parent);
+    child.setRight(parent);
+}
+</code></pre><h4 id="右左旋转-1"><a href="#右左旋转-1" class="headerlink" title="右左旋转"></a>右左旋转</h4><pre><code>private void RightLeftRotate(Node node){
+
+    Node parent = node.getParent();
+    Node child = node.getLeft();
+
+    if(!child.hasChild()){
+        node.setAVL(0);
+        parent.setAVL(0);
+    }else if(child.getAVL() == -1){
+        node.setAVL(1);
+        parent.setAVL(0);
+    }else if(child.getAVL() == 1){
+        node.setAVL(0);
+        parent.setAVL(-1);
+    }else if(child.getAVL() == 0){
+        parent.setAVL(0);
+        node.setAVL(0);
+    }
+    child.setAVL(0);
+
+    //第一次交换
+    parent.setRight(child);
+    node.setParent(child);
+    node.setLeft(child.getRight()); 
+    if(child.getRight() != null)
+        child.getRight().setParent(node);
+    child.setRight(node);
+    child.setParent(parent);
+
+    //第二次交换
+    if(parent.getParent() != null &amp;&amp; parent == parent.getParent().getLeft()){
+        child.setParent(parent.getParent());
+        parent.getParent().setLeft(child);
+    }else if(parent.getParent() != null &amp;&amp; parent == parent.getParent().getRight()){
+        child.setParent(parent.getParent());
+        parent.getParent().setRight(child);
+    }else{
+        root = child;
+        child.setParent(null);
+    }
+    parent.setParent(child);
+    parent.setRight(child.getLeft());
+    if(child.getLeft() != null)
+        child.getLeft().setParent(parent);
+    child.setLeft(parent);
+}
+</code></pre><p>完整代码github地址：<a href="https://github.com/ziyuanjg/AVLTree" target="_blank" rel="external">https://github.com/ziyuanjg/AVLTree</a></p>
+]]></content>
+      
+        
+        <tags>
+            
+            <tag> 算法 </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[LinkedList源码阅读笔记（基于JDK1.8）]]></title>
+      <url>/2017/06/19/JDKCode-4/</url>
+      <content type="html"><![CDATA[<p>　　LinkedList是List接口的一个有序链表实现，存储节点是内部类Node，Node中有两个属性prev和next，负责连接前后两个元素。由于不是使用数组进行存储，所以查询需要遍历链表一半的元素（后面会解释），但是因为插入的时候只需要查询插入位置的元素，然后修改前后两个元素的对应属性即可，所以插入效率相对ArrayList较高（针对add(int index, E element)方法，add(E e)直接插入链表最后）。<br><a id="more"></a></p>
+<h3 id="添加"><a href="#添加" class="headerlink" title="添加"></a>添加</h3><pre><code>public void addFirst(E e) {                   //添加元素到列表头
+    linkFirst(e);
+}
+public void addLast(E e) {                    //添加元素到列表尾
+    linkLast(e);
+}
+ public boolean add(E e) {                    //添加元素到列表头，会返回添加是否成功
+    linkLast(e);
+    return true;
+}
+public void add(int index, E element) {       //添加元素到index位置
+    checkPositionIndex(index);                //检查index是否越界
+
+    if (index == size)                        //如果index等于链表长度则插入到链表尾
+        linkLast(element);
+    else                                      //否则插入到链表头
+        linkBefore(element, node(index));
+}
+public boolean addAll(int index, Collection&lt;? extends E&gt; c) {    //在index位置插入集合c的全部元素
+    checkPositionIndex(index);                //检查index是否越界
+
+    Object[] a = c.toArray();
+    int numNew = a.length;
+    if (numNew == 0)
+        return false;
+
+    Node&lt;E&gt; pred, succ;
+    if (index == size) {                    //如果index为链表长度，则插入位置为链表尾
+        succ = null;
+        pred = last;
+    } else {                                //否则将记录index位置的前一个元素，为之后连接链表准备
+        succ = node(index);
+        pred = succ.prev;
+    }
+
+    for (Object o : a) {                    //遍历参数集合，将元素依次插入实例集合
+        @SuppressWarnings(&quot;unchecked&quot;) E e = (E) o;
+        Node&lt;E&gt; newNode = new Node&lt;&gt;(pred, e, null);    
+        if (pred == null)
+            first = newNode;
+        else
+            pred.next = newNode;
+        pred = newNode;
+    }
+</code></pre><p>　　　　//插入完毕，将原集合index之后的部分连接到链表尾<br>        if (succ == null) {<br>            last = pred;<br>        } else {<br>            pred.next = succ;<br>            succ.prev = pred;<br>        }</p>
+<pre><code>    size += numNew;
+    modCount++;
+    return true;
+}
+public E set(int index, E element) {        //修改index位置元素为element
+    checkElementIndex(index);
+    Node&lt;E&gt; x = node(index);
+    E oldVal = x.item;
+    x.item = element;
+    return oldVal;
+}
+</code></pre><h3 id="取值"><a href="#取值" class="headerlink" title="取值"></a>取值</h3><pre><code>public E getFirst() {                         //获取链表头元素
+    final Node&lt;E&gt; f = first;
+    if (f == null)
+        throw new NoSuchElementException();
+    return f.item;
+}
+public E getLast() {                         //获取链表尾元素
+    final Node&lt;E&gt; l = last;
+    if (l == null)
+        throw new NoSuchElementException();
+    return l.item;
+}
+public E get(int index) {                    //获取链表index位置的元素
+    checkElementIndex(index);
+    return node(index).item;
+}
+Node&lt;E&gt; node(int index) {                    //获取特定位置元素的实现方法
+    // assert isElementIndex(index);
+
+    if (index &lt; (size &gt;&gt; 1)) {               //如果index小于链表长度的一半则从前向后遍历前一半链表
+        Node&lt;E&gt; x = first;
+        for (int i = 0; i &lt; index; i++)
+            x = x.next;
+        return x;
+    } else {                                //如果index大于等于链表长度的一半则从后向前遍历后一半链表
+        Node&lt;E&gt; x = last;
+        for (int i = size - 1; i &gt; index; i--)
+            x = x.prev;
+        return x;
+    }
+}
+</code></pre><h3 id="删除"><a href="#删除" class="headerlink" title="删除"></a>删除</h3><pre><code>public E removeFirst() {                       //删除链表头元素，类似pop
+    final Node&lt;E&gt; f = first;
+    if (f == null)
+        throw new NoSuchElementException();
+    return unlinkFirst(f);
+}
+public E removeLast() {                        //删除链表尾元素
+    final Node&lt;E&gt; l = last;
+    if (l == null)
+        throw new NoSuchElementException();
+    return unlinkLast(l);
+}
+private E unlinkFirst(Node&lt;E&gt; f) {             //删除链表头元素的实现方法
+    // assert f == first &amp;&amp; f != null;
+    final E element = f.item;
+    final Node&lt;E&gt; next = f.next;
+    f.item = null;
+    f.next = null;                             // 这两个置为空是为了方便GC
+    first = next;                              //第二个元素提置第一位，将原第一位元素踢出链表
+    if (next == null)                          //如果没有next说明删除链表头元素后链表为空，将last置为空
+        last = null;
+    else                                       //next不为空说明删除后链表还存在元素，将现第一位元素的prev置为空（链表头元素prev为空）
+        next.prev = null;
+    size--;
+    modCount++;
+    return element;
+}
+ private E unlinkLast(Node&lt;E&gt; l) {             //删除链表尾元素的实现方法
+    // assert l == last &amp;&amp; l != null;
+    final E element = l.item;
+    final Node&lt;E&gt; prev = l.prev;
+    l.item = null;
+    l.prev = null;                             //这两个置为空是为了方便GC
+    last = prev;                               //将倒数第二个元素置为链表尾元素，将原链表尾元素踢出链表
+    if (prev == null)                          //如果prev为空则说明删除链表尾元素后链表为空，没有已保存的元素，此时first为空
+        first = null;
+    else                                       //如果prev不为空，说明删除之后链表还存在元素，此时需将链表尾元素的next元素置为空（链表尾元素next为空）
+        prev.next = null;
+    size--;
+    modCount++;
+    return element;
+}
+public boolean remove(Object o) {               //删除指定元素实现方法
+    if (o == null) {                            //遍历空对象
+        for (Node&lt;E&gt; x = first; x != null; x = x.next) {
+            if (x.item == null) {               //如果有符合的元素则删除
+                unlink(x);    
+                return true;
+            }
+        }
+    } else {
+        for (Node&lt;E&gt; x = first; x != null; x = x.next) {
+            if (o.equals(x.item)) {            //如果有符合的元素则删除
+                unlink(x);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+public E remove(int index) {                   //删除指定位置的元素
+    checkElementIndex(index);
+    return unlink(node(index));
+}
+public E remove() {                            //删除链表头元素
+    return removeFirst();
+}
+E unlink(Node&lt;E&gt; x) {                          //删除指定元素实现方法
+    // assert x != null;
+    final E element = x.item;                  //参数元素的value，用于返回值
+    final Node&lt;E&gt; next = x.next;               //参数元素的下一位元素
+    final Node&lt;E&gt; prev = x.prev;               //参数元素的上一位元素
+
+    if (prev == null) {                        //prev为空说明参数元素是链表头元素，将下一位元素提置链表头
+        first = next;
+    } else {                                   //将上一位元素和下一位元素相连
+        prev.next = next;
+        x.prev = null;
+    }
+
+    if (next == null) {                        //如果next为空说明参数元素是链表尾元素，将上一位元素置为链表尾
+        last = prev;
+    } else {                                   //将上一位元素和下一位元素相连
+        next.prev = prev;
+        x.next = null;
+    }
+
+    x.item = null;
+    size--;
+    modCount++;
+    return element;
+}
+public boolean removeLastOccurrence(Object o) {    //找到元素出现的最后位置并删除
+    if (o == null) {
+        for (Node&lt;E&gt; x = last; x != null; x = x.prev) {
+            if (x.item == null) {
+                unlink(x);
+                return true;
+            }
+        }
+    } else {
+        for (Node&lt;E&gt; x = last; x != null; x = x.prev) {
+            if (o.equals(x.item)) {
+                unlink(x);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+</code></pre><h3 id="迭代"><a href="#迭代" class="headerlink" title="迭代"></a>迭代</h3><p>LinkedList的迭代实现和其他几个集合的实现相比要强大一些，不仅可以向后遍历，也可以向前遍历，而且包含了实现fail-fast的增删改操作。</p>
+<pre><code>public E next() {                                     //获取下一个元素
+        checkForComodification();
+        if (!hasNext())
+            throw new NoSuchElementException();
+
+        lastReturned = next;
+        next = next.next;
+        nextIndex++;
+        return lastReturned.item;
+    }
+public E previous() {                                 //获取上一个元素，需要注意的是当调用next然后调用previous时会返回同一个元素，因为调用next的时候nextIndex被加一，而previous中nextIndex减一，所以会取到同一个元素
+        checkForComodification();
+        if (!hasPrevious())
+            throw new NoSuchElementException();
+
+        lastReturned = next = (next == null) ? last : next.prev;
+        nextIndex--;
+        return lastReturned.item;
+    }
+public void remove() {                                //实现了fail-fast的删除
+        checkForComodification();
+        if (lastReturned == null)
+            throw new IllegalStateException();
+
+        Node&lt;E&gt; lastNext = lastReturned.next;
+        unlink(lastReturned);
+        if (next == lastReturned)
+            next = lastNext;
+        else
+            nextIndex--;
+        lastReturned = null;
+        expectedModCount++;
+    }
+
+    public void set(E e) {                            //实现了fail-fast的修改
+        if (lastReturned == null)
+            throw new IllegalStateException();
+        checkForComodification();
+        lastReturned.item = e;
+    }
+
+    public void add(E e) {                            //实现了fail-fast的新增
+        checkForComodification();
+        lastReturned = null;
+        if (next == null)
+            linkLast(e);
+        else
+            linkBefore(e, next);
+        nextIndex++;
+        expectedModCount++;
+    }
+</code></pre>]]></content>
+      
+        
+        <tags>
+            
+            <tag> JDKCode </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[ArrayList源码阅读笔记(基于JDk1.8)]]></title>
+      <url>/2017/06/19/JDKCode-3/</url>
+      <content type="html"><![CDATA[<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>　　ArrayList是基于数组实现的一个有序的列表，允许添加null值.除了List接口中的方法外，还实现了一些操作数组元素和大小的方法，具体下面会列举。每个ArrayList实例都有一个元素数，即size属性，这个属性标注了在实例中包含了多少个元素，这些元素存储在elementData这个数组中，当实例的容量不足时，会调用grow方法进行扩容，通常情况下每次扩大一半容量，但是有两种特殊情况，一种是手动指定的容量大于当前容量的1.5倍时会按照指定容量扩容，另一种是当前容量的1.5倍大于MAX_ARRAY_SIZE这个值的时候会扩容至Integer.MAX_VALUE或MAX_ARRAY_SIZE。</p>
+<a id="more"></a>
+<h2 id="关键常量"><a href="#关键常量" class="headerlink" title="关键常量"></a>关键常量</h2><table>
+<thead>
+<tr>
+<th style="text-align:left">常量名</th>
+<th style="text-align:left">含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">private static final int DEFAULT_CAPACITY = 10</td>
+<td style="text-align:left">当没有其他参数影响数组大小时的默认数组大小</td>
+</tr>
+<tr>
+<td style="text-align:left">private static final Object[] EMPTY_ELEMENTDATA = {}</td>
+<td style="text-align:left">如果elementData用这个变量初始化，则DEFAULT_CAPACITY不会参与数组大小的运算</td>
+</tr>
+<tr>
+<td style="text-align:left">private static final Object[] DEFAULTCAPACITY_EMPTY_ELEMENTDATA = {}</td>
+<td style="text-align:left">如果elementData用这个变量初始化，则DEFAULT_CAPACITY会参与数组大小的运算,只有ArrayList()中有调用</td>
+</tr>
+<tr>
+<td style="text-align:left">transient Object[] elementData</td>
+<td style="text-align:left">实际存储数据的数组</td>
+</tr>
+<tr>
+<td style="text-align:left">private int size</td>
+<td style="text-align:left">数组大小</td>
+</tr>
+<tr>
+<td style="text-align:left">private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8</td>
+<td style="text-align:left">之所以减8是因为不同的vm有不同的保留字会占用一部分容量</td>
+</tr>
+</tbody>
+</table>
+<h2 id="主要方法"><a href="#主要方法" class="headerlink" title="主要方法"></a>主要方法</h2><h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><pre><code>public ArrayList() {
+    this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
+}
+public ArrayList(int initialCapacity) {       //指定容量
+    if (initialCapacity &gt; 0) {                //指定容量&gt;0，则按照指定的容量构建数组
+        this.elementData = new Object[initialCapacity];
+    } else if (initialCapacity == 0) {        //指定容量=0，则构造默认空数组
+        this.elementData = EMPTY_ELEMENTDATA;
+    } else {
+        throw new IllegalArgumentException(&quot;Illegal Capacity: &quot;+initialCapacity);
+    }
+}
+public ArrayList(Collection&lt;? extends E&gt; c) {      //通过一个集合构造数组
+    elementData = c.toArray();
+    if ((size = elementData.length) != 0) {        //参数集合不为空，则将实例构造成Object[]
+        if (elementData.getClass() != Object[].class)
+            elementData = Arrays.copyOf(elementData, size, Object[].class);
+    } else {                                       //参数集合为空，则将实例构造成默认空数组
+        this.elementData = EMPTY_ELEMENTDATA;
+    }
+}
+</code></pre><h3 id="新增"><a href="#新增" class="headerlink" title="新增"></a>新增</h3><pre><code>public boolean add(E e) {
+    ensureCapacityInternal(size + 1);      //扩容操作
+    elementData[size++] = e;
+    return true;
+}
+public void add(int index, E element) {　　//添加元素到指定位置
+    rangeCheckForAdd(index);               //检查index是否越界
+
+    ensureCapacityInternal(size + 1); 
+    System.arraycopy(elementData, index, elementData, index + 1,size - index);
+    elementData[index] = element;
+    size++;
+}
+public boolean addAll(Collection&lt;? extends E&gt; c) {    //将参数集合添加至实例
+    Object[] a = c.toArray();
+    int numNew = a.length;
+    ensureCapacityInternal(size + numNew);  
+    System.arraycopy(a, 0, elementData, size, numNew);
+    size += numNew;
+    return numNew != 0;
+}
+ public boolean addAll(int index, Collection&lt;? extends E&gt; c) {    //将参数集合添加至实例指定位置
+    rangeCheckForAdd(index);                //检查index是否越界
+
+    Object[] a = c.toArray();
+    int numNew = a.length;
+    ensureCapacityInternal(size + numNew);  // Increments modCount
+
+    int numMoved = size - index;            //这里要注意，插入前会将原数组从index位置分开
+    if (numMoved &gt; 0)
+        System.arraycopy(elementData, index, elementData, index + numNew,numMoved);
+
+    System.arraycopy(a, 0, elementData, index, numNew);
+    size += numNew;
+    return numNew != 0;
+}
+</code></pre><h3 id="覆盖"><a href="#覆盖" class="headerlink" title="覆盖"></a>覆盖</h3><pre><code>public E set(int index, E element) {        
+    //新增会将index位置之后的元素依次后移，而覆盖会将index位置的元素替换，对其他位置的元素没有影响
+    rangeCheck(index);
+
+    E oldValue = elementData(index);
+    elementData[index] = element;
+    return oldValue;
+}
+</code></pre><h3 id="读取"><a href="#读取" class="headerlink" title="读取"></a>读取</h3><pre><code>public E get(int index) {
+    rangeCheck(index);
+
+    return elementData(index);
+}
+</code></pre><h3 id="删除"><a href="#删除" class="headerlink" title="删除"></a>删除</h3><pre><code>public E remove(int index) {        
+    rangeCheck(index);
+
+    modCount++;
+    E oldValue = elementData(index);
+
+    int numMoved = size - index - 1;
+    if (numMoved &gt; 0)
+        System.arraycopy(elementData, index+1, elementData, index,        //删除元素之后会将index之后的元素依次向前一位
+                         numMoved);
+    elementData[--size] = null; // clear to let GC do its work
+
+    return oldValue;
+}
+public boolean remove(Object o) {
+    if (o == null) {
+        for (int index = 0; index &lt; size; index++)        //遍历数组直到找到指定元素并删除
+            if (elementData[index] == null) {
+                fastRemove(index);
+                return true;
+            }
+    } else {
+        for (int index = 0; index &lt; size; index++)        //遍历数组直到找到指定元素并删除
+            if (o.equals(elementData[index])) {
+                fastRemove(index);
+                return true;
+            }
+    }
+    return false;
+}
+</code></pre><h3 id="清空"><a href="#清空" class="headerlink" title="清空"></a>清空</h3><pre><code>public void clear() {
+    modCount++;
+
+    for (int i = 0; i &lt; size; i++)
+        elementData[i] = null;
+
+    size = 0;
+}   
+</code></pre><h3 id="扩容"><a href="#扩容" class="headerlink" title="扩容"></a>扩容</h3><pre><code>private void ensureCapacityInternal(int minCapacity) {
+    if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {    //当使用第一种构造方法时，第一次执行扩容方法会进入这个分支，将容量扩展为默认大小（10）
+        minCapacity = Math.max(DEFAULT_CAPACITY, minCapacity);
+    }
+    ensureExplicitCapacity(minCapacity);
+}
+
+private void ensureExplicitCapacity(int minCapacity) {
+    modCount++;
+    if (minCapacity - elementData.length &gt; 0)                   //如果参数长度大于数组长度则会扩容
+        grow(minCapacity);
+}
+private void grow(int minCapacity) {    
+    int oldCapacity = elementData.length;
+    int newCapacity = oldCapacity + (oldCapacity &gt;&gt; 1);        //默认每次增长为1.5倍
+    if (newCapacity - minCapacity &lt; 0)                           //特例1：参数大于数组长度的1.5倍，此时按照参数扩容
+        newCapacity = minCapacity;
+    if (newCapacity - MAX_ARRAY_SIZE &gt; 0)                       //特例2：数组长度的1.5倍大于MAX_ARRAY_SIZE，此时将数组扩容至MAX_ARRAY_SIZE 或Integer.MAX_VALUE
+        newCapacity = hugeCapacity(minCapacity);
+    elementData = Arrays.copyOf(elementData, newCapacity);
+}
+</code></pre><h3 id="Fail-Fast机制"><a href="#Fail-Fast机制" class="headerlink" title="Fail-Fast机制"></a>Fail-Fast机制</h3><p>ArrayList的迭代器也具备快速失败机制，具体是通过checkForComodification()进行控制：</p>
+<pre><code>final void checkForComodification() {
+    if (modCount != expectedModCount)
+        throw new ConcurrentModificationException();
+}
+</code></pre><p>如果并发线程对实例进行增删操作，则迭代器会抛出异常以防止在不确定的时间发生某种行为带来的未知风险。</p>
+]]></content>
+      
+        
+        <tags>
+            
+            <tag> JDKCode </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[LinkedHashMap源码阅读笔记（基于jdk1.8）]]></title>
+      <url>/2017/06/19/JDKCode-2/</url>
+      <content type="html"><![CDATA[<p>　　LinkedHashMap是HashMap的子类，很多地方都是直接引用HashMap中的方法，所以需要注意的地方并不多。关键的点就是几个重写的方法：</p>
+<h2 id="Entry"><a href="#Entry" class="headerlink" title="Entry"></a>Entry</h2><p>　　Entry是继承与Node类，也就是LinkedHashMap与HashMap的根本区别所在，Node是链表形式，只有next与下一个元素进行连接，而Entry的链表有before和after两个连接点。</p>
+<pre><code>static class Entry&lt;K,V&gt; extends HashMap.Node&lt;K,V&gt; {
+    Entry&lt;K,V&gt; before, after;
+    Entry(int hash, K key, V value, Node&lt;K,V&gt; next) {
+        super(hash, key, value, next);
+    }
+}
+</code></pre><a id="more"></a>
+<h2 id="链表节点"><a href="#链表节点" class="headerlink" title="链表节点"></a>链表节点</h2><p>　　区别是将节点变成Entry，并且按照链表方式将元素有序连接</p>
+<pre><code>Node&lt;K,V&gt; newNode(int hash, K key, V value, Node&lt;K,V&gt; e) {
+    LinkedHashMap.Entry&lt;K,V&gt; p =
+        new LinkedHashMap.Entry&lt;K,V&gt;(hash, key, value, e);
+    linkNodeLast(p);
+    return p;
+}
+</code></pre><h2 id="红黑树节点"><a href="#红黑树节点" class="headerlink" title="红黑树节点"></a>红黑树节点</h2><p>　　红黑树节点类型并没有改变，也只是按照链表方式连接</p>
+<pre><code>TreeNode&lt;K,V&gt; newTreeNode(int hash, K key, V value, Node&lt;K,V&gt; next) {
+    TreeNode&lt;K,V&gt; p = new TreeNode&lt;K,V&gt;(hash, key, value, next);
+    linkNodeLast(p);
+    return p;
+}
+</code></pre><p>　　HashMap中为LinkedHashMap留下了三个预留方法：</p>
+<h3 id="第一个比较好理解，在删除元素e的时候将e前后的元素相连。"><a href="#第一个比较好理解，在删除元素e的时候将e前后的元素相连。" class="headerlink" title="第一个比较好理解，在删除元素e的时候将e前后的元素相连。"></a>第一个比较好理解，在删除元素e的时候将e前后的元素相连。</h3><pre><code>void afterNodeRemoval(Node&lt;K,V&gt; e) { // unlink
+    LinkedHashMap.Entry&lt;K,V&gt; p =
+        (LinkedHashMap.Entry&lt;K,V&gt;)e, b = p.before, a = p.after;
+    p.before = p.after = null;
+    if (b == null)
+        head = a;
+    else
+        b.after = a;
+    if (a == null)
+        tail = b;
+    else
+        a.before = b;
+}
+</code></pre><h3 id="这个方法表面上看是判断是否删除链表中第一个元素，但是实际上是为重写LRU而准备的。"><a href="#这个方法表面上看是判断是否删除链表中第一个元素，但是实际上是为重写LRU而准备的。" class="headerlink" title="这个方法表面上看是判断是否删除链表中第一个元素，但是实际上是为重写LRU而准备的。"></a>这个方法表面上看是判断是否删除链表中第一个元素，但是实际上是为重写LRU而准备的。</h3><pre><code>void afterNodeInsertion(boolean evict) { // possibly remove eldest
+    LinkedHashMap.Entry&lt;K,V&gt; first;
+    if (evict &amp;&amp; (first = head) != null &amp;&amp; removeEldestEntry(first)) {
+        K key = first.key;
+        removeNode(hash(key), key, null, false, true);
+    }
+}
+</code></pre><p>关键就是下面这个方法，在LinkedHashMap中默认返回是false，当需要实现LRU算法的时候继承LinkedHashMap的子类重写这个方法即可，LRU内容较多，稍后会单开一贴记录。</p>
+<pre><code>protected boolean removeEldestEntry(Map.Entry&lt;K,V&gt; eldest) {
+    return false;
+}
+</code></pre><h3 id="第三个方法主要是将元素移到链表的最后一位，关键参数是accessOrder，这个参数只有在public-LinkedHashMap-int-initialCapacity-float-loadFactor-boolean-accessOrder-中可以手动设置为true，其余时候都默认为false，所以这个方法实际用到的地方比较少。"><a href="#第三个方法主要是将元素移到链表的最后一位，关键参数是accessOrder，这个参数只有在public-LinkedHashMap-int-initialCapacity-float-loadFactor-boolean-accessOrder-中可以手动设置为true，其余时候都默认为false，所以这个方法实际用到的地方比较少。" class="headerlink" title="第三个方法主要是将元素移到链表的最后一位，关键参数是accessOrder，这个参数只有在public LinkedHashMap(int initialCapacity, float loadFactor,boolean accessOrder) 中可以手动设置为true，其余时候都默认为false，所以这个方法实际用到的地方比较少。"></a>第三个方法主要是将元素移到链表的最后一位，关键参数是accessOrder，这个参数只有在public LinkedHashMap(int initialCapacity, float loadFactor,boolean accessOrder) 中可以手动设置为true，其余时候都默认为false，所以这个方法实际用到的地方比较少。</h3><pre><code>void afterNodeAccess(Node&lt;K,V&gt; e) { // move node to last
+    LinkedHashMap.Entry&lt;K,V&gt; last;
+    if (accessOrder &amp;&amp; (last = tail) != e) {
+        LinkedHashMap.Entry&lt;K,V&gt; p =
+            (LinkedHashMap.Entry&lt;K,V&gt;)e, b = p.before, a = p.after;
+        p.after = null;
+        if (b == null)
+            head = a;
+        else
+            b.after = a;
+        if (a != null)
+            a.before = b;
+        else
+            last = b;
+        if (last == null)
+            head = p;
+        else {
+            p.before = last;
+            last.after = p;
+        }
+        tail = p;
+        ++modCount;
+    }
+}
+</code></pre><p>accessOrder这个参数的实际意义是控制链表get的时候是按照插入顺序还是访问顺序，比如下面的例子：</p>
+<pre><code>Map&lt;String,String&gt; m = new LinkedHashMap(16,0.75F,true);
+    m.put(&quot;1&quot;, &quot;a&quot;);
+    m.put(&quot;2&quot;, &quot;b&quot;);
+    m.put(&quot;3&quot;, &quot;c&quot;);
+    m.put(&quot;4&quot;, &quot;d&quot;);
+    m.get(&quot;1&quot;);
+    m.get(&quot;2&quot;);
+    m.forEach((x,y)-&gt;{System.out.println(y);});
+</code></pre><p>这时的输出是cdab，如果accessOrder设置为false则输出abcd。</p>
+<p>　　这种链表形式其实在调用get方法的时候没有什么差别，存储方式也没有什么差别，差别在于forEach这个方法。HashMap中想要遍历所有元素只能通过三种set集合的迭代器，但是LinkedHashMap自身实现了forEach方法，而且在put的时候队元素进行了排序，所以可以直接对自身进行遍历。</p>
+]]></content>
+      
+        
+        <tags>
+            
+            <tag> JDKCode </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[HashMap源码阅读笔记（基于jdk1.8）]]></title>
+      <url>/2017/06/19/JDKCode-1/</url>
+      <content type="html"><![CDATA[<h2 id="HashMap概述"><a href="#HashMap概述" class="headerlink" title="HashMap概述"></a>HashMap概述</h2><p>　　HashMap是基于Map接口的一个非同步实现，此实现提供key-value形式的数据映射，支持null值。<br><a id="more"></a><br>HashMap的常量和重要变量如下：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">常量名</th>
+<th style="text-align:left">含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">DEFAULT_INITIAL_CAPACITY = 16</td>
+<td style="text-align:left">Node数组的默认长度</td>
+</tr>
+<tr>
+<td style="text-align:left">MAXIMUM_CAPACITY = 1073741824</td>
+<td style="text-align:left">Node数组的最大长度</td>
+</tr>
+<tr>
+<td style="text-align:left">DEFAULT_LOAD_FACTOR = 0.75F</td>
+<td style="text-align:left">负载因子，调控控件与冲突率的因数</td>
+</tr>
+<tr>
+<td style="text-align:left">TREEIFY_THRESHOLD = 8</td>
+<td style="text-align:left">链表转换为树的阈值，超过这个长度的链表会被转换为红黑树</td>
+</tr>
+<tr>
+<td style="text-align:left">UNTREEIFY_THRESHOLD = 6</td>
+<td style="text-align:left">当进行resize操作时，小于这个长度的树会被转换为链表</td>
+</tr>
+<tr>
+<td style="text-align:left">MIN_TREEIFY_CAPACITY = 64</td>
+<td style="text-align:left">链表被转换成树形的最小容量，如果没有达到这个容量只会执行resize进行扩容</td>
+</tr>
+<tr>
+<td style="text-align:left">Node<k, v="">[] table</k,></td>
+<td style="text-align:left">储存元素的数组</td>
+</tr>
+<tr>
+<td style="text-align:left">Set<map.entry<k, v="">&gt; entrySet</map.entry<k,></td>
+<td style="text-align:left">set数组，用于迭代元素</td>
+</tr>
+<tr>
+<td style="text-align:left">int size</td>
+<td style="text-align:left">存放元素的个数，但不等于数组的长度</td>
+</tr>
+<tr>
+<td style="text-align:left">int modCount</td>
+<td style="text-align:left">每次扩容和更改map结构的计数器</td>
+</tr>
+<tr>
+<td style="text-align:left">int threshold</td>
+<td style="text-align:left">临界值，当实际大小（容量*负载因子）超过临界值的时候，会进行扩容</td>
+</tr>
+<tr>
+<td style="text-align:left">float loadFactor</td>
+<td style="text-align:left">负载因子，默认为0.75F</td>
+</tr>
+</tbody>
+</table>
+<h2 id="HashMap实现原理"><a href="#HashMap实现原理" class="headerlink" title="HashMap实现原理"></a>HashMap实现原理</h2><p>　　在jdk1.8中，HashMap是采用数组+链表+红黑树的形式实现。如下图：<br><img src="/images/mybatis_29.png" alt=""></p>
+<p>　　其中链表的实现如下：</p>
+<pre><code>static class Node&lt;K,V&gt; implements Map.Entry&lt;K,V&gt; {
+    final int hash;
+    final K key;
+    V value;
+    Node&lt;K,V&gt; next;
+
+    Node(int hash, K key, V value, Node&lt;K,V&gt; next) {
+        this.hash = hash;
+        this.key = key;
+        this.value = value;
+        this.next = next;
+    }
+
+    public final K getKey()        { return key; }
+    public final V getValue()      { return value; }
+    public final String toString() { return key + &quot;=&quot; + value; }
+
+    public final int hashCode() {
+        return Objects.hashCode(key) ^ Objects.hashCode(value);
+    }
+
+    public final V setValue(V newValue) {
+        V oldValue = value;
+        value = newValue;
+        return oldValue;
+    }
+
+    public final boolean equals(Object o) {
+        if (o == this)
+            return true;
+        if (o instanceof Map.Entry) {
+            Map.Entry&lt;?,?&gt; e = (Map.Entry&lt;?,?&gt;)o;
+            if (Objects.equals(key, e.getKey()) &amp;&amp;
+                Objects.equals(value, e.getValue()))
+                return true;
+        }
+        return false;
+    }
+}
+</code></pre><p>　　可以看到，node中包含一个next变量，这个就是链表的关键点，hash结果相同的元素就是通过这个next进行关联的。</p>
+<p>　　接下来看看红黑树的实现：</p>
+<pre><code>static final class TreeNode&lt;K,V&gt; extends LinkedHashMap.Entry&lt;K,V&gt; {
+    TreeNode&lt;K,V&gt; parent;  // red-black tree links
+    TreeNode&lt;K,V&gt; left;
+    TreeNode&lt;K,V&gt; right;
+    TreeNode&lt;K,V&gt; prev;    // needed to unlink next upon deletion
+    boolean red;
+    TreeNode(int hash, K key, V val, Node&lt;K,V&gt; next) {
+        super(hash, key, val, next);
+    }
+</code></pre><p>　　　……<br>    }</p>
+<p>　　红黑树比链表多了四个变量，parent父节点、left左节点、right右节点、prev上一个同级节点，红黑树内容较多，有兴趣的可以自行百度，不在赘述。</p>
+<p>　　在来说说hash算法，HashMap中使用的算法如下</p>
+<pre><code>static final int hash(Object key) {
+    int h;
+    return (key == null) ? 0 : (h = key.hashCode()) ^ (h &gt;&gt;&gt; 16);
+}
+</code></pre><p>　　这个hash先将key右移了16位，然后与key进行异或，这里还涉及到后面put方法中的另一次&amp;操作，</p>
+<pre><code>tab[i = (n - 1) &amp; hash]
+</code></pre><p>　　tab既是table，n是map集合的容量大小，hash是上面方法的返回值。因为通常声明map集合时不会指定大小，或者初始化的时候就创建一个容量很大的map对象，所以这个通过容量大小与key值进行hash的算法在开始的时候只会对低位进行计算，虽然容量的2进制高位一开始都是0，但是key的2进制高位通常是有值的，因此先在hash方法中将key的hashCode右移16位在与自身异或，使得高位也可以参与hash，更大程度上减少了碰撞率。</p>
+<p>　　构造方法如下：</p>
+<pre><code>public HashMap()                                             //默认构造方法
+public HashMap(int initialCapacity)                          //参数为初始大小
+public HashMap(int initialCapacity, float loadFactor)        //参数为初始大小，负载因子
+</code></pre><p>　　这里又涉及到另一个算法：</p>
+<pre><code>static final int tableSizeFor(int cap) {
+    int n = cap - 1;
+    n |= n &gt;&gt;&gt; 1;
+    n |= n &gt;&gt;&gt; 2;
+    n |= n &gt;&gt;&gt; 4;
+    n |= n &gt;&gt;&gt; 8;
+    n |= n &gt;&gt;&gt; 16;
+    return (n &lt; 0) ? 1 : (n &gt;= MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : n + 1;
+}
+</code></pre><p>　　这个算法很有意思，通过给定的大小cap，计算大于等于cap的最小的2的幂数。连续5次右移运算乍一看没有什么意思，但仔细一想2进制都是0和1啊，这就有问题了，第一次右移一位，就表示但凡是1的位置右边的一位都变成了1，第二次右移两位，上次已经把有1的位置都变成连续两个1了，是不是感觉很神奇，如此下来5次运算正好将int的32位都转了个遍，以最高的一个1的位置为基准将后面所有位数都变为1，然后在进行n+1，不就变成了2的幂数。这里还有一点要注意的是第一行的cap-1，这是因为如果cap本身就是2的幂数，会出现结果是cap的2倍的情况，会浪费空间。</p>
+<h2 id="HashMap的存取"><a href="#HashMap的存取" class="headerlink" title="HashMap的存取"></a>HashMap的存取</h2><h3 id="存储"><a href="#存储" class="headerlink" title="存储"></a>存储</h3><pre><code>final V putVal(int hash, K key, V value, boolean onlyIfAbsent, boolean evict) {                       //put方法的实际执行者
+        //hash，key的hash值；onlyIfAbsent，是否改变原有值；evict，LinkedHashMap回调时才会用到。
+        Node&lt;K,V&gt;[] tab; 
+        Node&lt;K,V&gt; p; 
+        int n, i;
+        if ((tab = table) == null || (n = tab.length) == 0)
+            n = (tab = resize()).length;                                                              //table为空或长度为0时，对table进行初始化，分配内存
+     　 if ((p = tab[i = (n - 1) &amp; hash]) == null)
+            tab[i] = newNode(hash, key, value, null);                                                 //当put的key在map中不存在时，直接new一个Node存入table。
+        else {                                                                                        //当key在map中存在时，进入此分支。
+            　Node&lt;K,V&gt; e; K k;
+            if (p.hash == hash &amp;&amp; ((k = p.key) == key || (key != null &amp;&amp; key.equals(k))))             //此处的p是table中的第n-1个元素，每一次必检查此元素的key是否与put的key相同，如果相同则替换value
+                e = p;
+            else if (p instanceof TreeNode)                                                           //检查p是否是TreeNode类型。
+                e = ((TreeNode&lt;K,V&gt;)p).putTreeVal(this, tab, hash, key, value);
+            else {                                                                                    //如果第n-1个元素不符合，则一次遍历table中其余元素，直到找到相应key值。
+                for (int binCount = 0; ; ++binCount) {
+                    if ((e = p.next) == null) {                                                       //此处主要为了防止hash出现重复，只有上边tab[i = (n - 1) &amp; hash]中存在元素且不是put的元素时才会进入这个分支。
+                        p.next = newNode(hash, key, value, null);
+                        if (binCount &gt;= TREEIFY_THRESHOLD - 1)                                        // 此处判断的意义是当链表长度超过8时，转换为红黑树，在1.8以前是没有的，链表查询的复杂度是O(n)，而红黑树是O(log(n))，但是如果hash结果不均匀会极大的影响性能
+                            treeifyBin(tab, hash);
+                        break;
+                    }
+                    if (e.hash == hash &amp;&amp; ((k = e.key) == key || (key != null &amp;&amp; key.equals(k))))     //进入此分支标志已找到与put的key值相同的元素，元素变量为e。
+                    　　break;
+                    p = e;
+                }
+            }
+               if (e != null) {                                                                       // 将对应key的value替换为put的value，同时返回旧value，只有存在key时才会返回！
+                V oldValue = e.value;
+                if (!onlyIfAbsent || oldValue == null)
+                    e.value = value;
+                afterNodeAccess(e);    
+                return oldValue;
+               }
+        }
+    ++modCount;
+    if (++size &gt; threshold)
+        resize();                                                                                    //对table进行扩容
+    afterNodeInsertion(evict);    
+    return null;
+}    
+</code></pre><p>　　从上面的源码可以看出，首先会判断key的hash与map容量-1的与计算值，如果数组中这个位置没有元素则直接插入，反之则在遍历此位置的元素链表，直到在最后插入。这个地方有一个链表的阈值（默认是8），如果一个链表的长度达到了阈值，则调用treefyBin()将链表转换成红黑树。</p>
+<h3 id="扩容"><a href="#扩容" class="headerlink" title="扩容"></a>扩容</h3><pre><code>final Node&lt;K,V&gt;[] resize() {                                      //扩容方法
+    Node&lt;K,V&gt;[] oldTab = table;
+    int oldCap = (oldTab == null) ? 0 : oldTab.length;            //map现在的容量
+    int oldThr = threshold;                            
+    int newCap, newThr = 0;
+    if (oldCap &gt; 0) {
+        if (oldCap &gt;= MAXIMUM_CAPACITY) {                         //如果现在的容量大于等于设定的最大容量则不会进行扩容
+            threshold = Integer.MAX_VALUE;
+            return oldTab;
+        }
+        else if ((newCap = oldCap &lt;&lt; 1) &lt; MAXIMUM_CAPACITY &amp;&amp; oldCap &gt;= DEFAULT_INITIAL_CAPACITY)
+            newThr = oldThr &lt;&lt; 1;                                 //如果现在的容量扩大为2倍依然没有超过最大容量，并且现在的容量大于等于数组的默认长度，将map的容量扩大为2倍
+    }
+    else if (oldThr &gt; 0)                                          //hashMap有一个构造方法会指定初始大小，这时候就会用到这个分支，对map进行初始化
+        newCap = oldThr;
+    else {                                                        //这个分支是默认的初始化参数分支，比如用new hashMap()生成一个对象，就会进入这个分支初始化
+        newCap = DEFAULT_INITIAL_CAPACITY;
+        newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
+    }
+    if (newThr == 0) {
+        float ft = (float)newCap * loadFactor;
+        newThr = (newCap &lt; MAXIMUM_CAPACITY &amp;&amp; ft &lt; (float)MAXIMUM_CAPACITY ? (int)ft : Integer.MAX_VALUE);
+    }
+    threshold = newThr;
+    @SuppressWarnings({&quot;rawtypes&quot;,&quot;unchecked&quot;})
+    Node&lt;K,V&gt;[] newTab = (Node&lt;K,V&gt;[])new Node[newCap];
+    table = newTab;
+    if (oldTab != null) {                                         //扩容操作，将oldTab的元素依次添加到newTab
+        for (int j = 0; j &lt; oldCap; ++j) {
+            Node&lt;K,V&gt; e;
+            if ((e = oldTab[j]) != null) {
+                oldTab[j] = null;
+                if (e.next == null)
+                    newTab[e.hash &amp; (newCap - 1)] = e;
+                else if (e instanceof TreeNode)
+                    ((TreeNode&lt;K,V&gt;)e).split(this, newTab, j, oldCap);
+                else { // preserve order
+                    Node&lt;K,V&gt; loHead = null, loTail = null;
+                    Node&lt;K,V&gt; hiHead = null, hiTail = null;
+                    Node&lt;K,V&gt; next;
+                    do {
+                        next = e.next;
+                        if ((e.hash &amp; oldCap) == 0) {
+                            if (loTail == null)
+                                loHead = e;
+                            else
+                                loTail.next = e;
+                            loTail = e;
+                        }
+                        else {
+                            if (hiTail == null)
+                                hiHead = e;
+                            else
+                                hiTail.next = e;
+                            hiTail = e;
+                        }
+                    } while ((e = next) != null);
+                    if (loTail != null) {
+                        loTail.next = null;
+                        newTab[j] = loHead;
+                    }
+                    if (hiTail != null) {
+                        hiTail.next = null;
+                        newTab[j + oldCap] = hiHead;
+                    }
+                }
+            }
+        }
+    }
+    return newTab;
+}
+</code></pre><p>　　在这个方法里有几个比较有意思的地方，首先是最大容量MAXIMUN_CAPACITY，这个值实际就是int的最大值，个人推测应该是为了配合put时的hash算法，因为计算key值hash的算法返回值是int型，如果容量超过int的阈值，在进行与运算时碰撞率会增大很多倍。然后是扩容的方式，这里是new了一个数组！这也是HashMap不安全的关键之一。当超过一个线程对一个HashMap对象进行put的时候如果触发了resize方法，后执行的那一个会把之前执行的结果覆盖掉！也就是先put的值不会真的存入map中。</p>
+<h3 id="链表转换为红黑树"><a href="#链表转换为红黑树" class="headerlink" title="链表转换为红黑树"></a>链表转换为红黑树</h3><pre><code>final void treeifyBin(Node&lt;K,V&gt;[] tab, int hash) {                     //将链表转换为红黑树
+    int n, index; Node&lt;K,V&gt; e;
+    if (tab == null || (n = tab.length) &lt; MIN_TREEIFY_CAPACITY)        //如果map的容量小于64（默认值），会调用resize扩容，不会转换为红黑树
+        resize();
+    else if ((e = tab[index = (n - 1) &amp; hash]) != null) {
+        TreeNode&lt;K,V&gt; hd = null, tl = null;
+        do {
+            TreeNode&lt;K,V&gt; p = replacementTreeNode(e, null);            //Node转换为TreeNode
+            if (tl == null)
+                hd = p;
+            else {
+                p.prev = tl;
+                tl.next = p;
+            }
+            tl = p;
+        } while ((e = e.next) != null);
+        if ((tab[index] = hd) != null)    
+            hd.treeify(tab);                                           //调用TreeNode的树排序方法
+    }
+}
+</code></pre><p>　　这里需要注意的是当map容量小于64时，就算链表超过了8也不会转换为红黑树。</p>
+<h3 id="Map克隆"><a href="#Map克隆" class="headerlink" title="Map克隆"></a>Map克隆</h3><pre><code>final void putMapEntries(Map&lt;? extends K, ? extends V&gt; m, boolean evict) {    //主要用于clone方法和putAll方法和一个构造方法HashMap(Map&lt;? extends K, ? extends V&gt; m)。
+    int s = m.size();
+    if (s &gt; 0) {    
+        if (table == null) {                                                  // 如果是一个new的map，即table变量还没有初始化，先通过参数的map.size和负载因子计算所需的map大小。
+            float ft = ((float)s / loadFactor) + 1.0F;
+            int t = ((ft &lt; (float)MAXIMUM_CAPACITY) ?
+                     (int)ft : MAXIMUM_CAPACITY);
+            if (t &gt; threshold)                                                //如果计算出的大小大于map的实际存储容量，则重新计算存储容量
+                threshold = tableSizeFor(t);
+        }
+        else if (s &gt; threshold)                                               //如果参数map大小大于实际存储容量，则将map容量变为2倍
+            resize();
+        for (Map.Entry&lt;? extends K, ? extends V&gt; e : m.entrySet()) {          //遍历赋值
+            K key = e.getKey();
+            V value = e.getValue();
+            putVal(hash(key), key, value, false, evict);
+        }
+    }
+}
+</code></pre><h3 id="读取"><a href="#读取" class="headerlink" title="读取"></a>读取</h3><pre><code>final Node&lt;K,V&gt; getNode(int hash, Object key) {                                //get的实际实现方法
+    Node&lt;K,V&gt;[] tab;
+    Node&lt;K,V&gt; first, e; 
+    int n; K k;
+    if ((tab = table) != null &amp;&amp; (n = tab.length) &gt; 0 &amp;&amp; (first = tab[(n - 1) &amp; hash]) != null) {          //通过hash定位到一个桶，并且有元素存在
+        if (first.hash == hash &amp;&amp;  ((k = first.key) == key || (key != null &amp;&amp; key.equals(k))))             //总是检查桶中的第一个元素
+            return first;
+        if ((e = first.next) != null) {                                        //如果第一个元素不符合，则继续搜索
+            if (first instanceof TreeNode)                                     //如果桶中是红黑树，进入此分支，实际执行的是TreeNode中的find方法，从根节点开始向下搜寻
+                return ((TreeNode&lt;K,V&gt;)first).getTreeNode(hash, key);
+            do {                                                               //如果是链表结构则依次遍历
+                if (e.hash == hash &amp;&amp; ((k = e.key) == key || (key != null &amp;&amp; key.equals(k))))
+                    return e;
+            } while ((e = e.next) != null);
+        }
+    }
+    return null;
+}
+</code></pre><p>　　看过put方法后再来看get就容易很多了，首先用put中的hash算法定位到数组中的位置，如果有元素且key值相同直接返回，如果有元素且key值不同那就要向下遍历了，如果是链表就一直遍历next，如果是红黑树则调用getTreeNode方法查找节点。</p>
+<h3 id="迭代器"><a href="#迭代器" class="headerlink" title="迭代器"></a>迭代器</h3><pre><code>abstract class HashIterator {                                                  //KeySet和EntrySet的迭代器的父类
+    Node&lt;K,V&gt; next;                                                            // 下一个元素
+    Node&lt;K,V&gt; current;                                                         // 删除方法会调用
+    int expectedModCount;                                                      // 就是hashMap中的modCount
+    int index;                                                                 // 元素序号
+
+    HashIterator() {                                                           //为上面四个变量赋初始值
+        expectedModCount = modCount;
+        Node&lt;K,V&gt;[] t = table;
+        current = next = null;
+        index = 0;
+        if (t != null &amp;&amp; size &gt; 0) { // advance to first entry
+            do {} while (index &lt; t.length &amp;&amp; (next = t[index++]) == null);
+        }
+    }
+    .......
+}
+</code></pre><p>　　HashIterator是KerSet和EntrySet的父类，这个迭代器中有一个属性是expectedModCount要特别注意，这个变量等价于HashMap对象中的modCount，如果在迭代器没有执行完的期间对map进行增删，会抛出异常阻止继续迭代，代码如下：</p>
+<pre><code>final Node&lt;K,V&gt; nextNode() {                                                  //获取下一个元素
+    Node&lt;K,V&gt;[] t;
+    Node&lt;K,V&gt; e = next;
+    if (modCount != expectedModCount)                                         //在迭代器执行期间只能用下面的remove删除元素，否则会抛出异常，不能增加元素
+        throw new ConcurrentModificationException();
+        if (e == null)                                                        //如果没有下一个会抛出异常
+            throw new NoSuchElementException();
+        if ((next = (current = e).next) == null &amp;&amp; (t = table) != null) {     //如果next没有取到值，通过index继续向下遍历，直到取到元素为止
+            do {} while (index &lt; t.length &amp;&amp; (next = t[index++]) == null);
+        }
+        return e;
+    }
+</code></pre><p>　　不过迭代器虽然不允许添加元素，但是给了一个删除的方法：</p>
+<pre><code>public final void remove() {                                                  //删除方法
+        Node&lt;K,V&gt; p = current;
+        if (p == null)
+            throw new IllegalStateException();
+        if (modCount != expectedModCount)
+            throw new ConcurrentModificationException();
+        current = null;
+        K key = p.key;
+        removeNode(hash(key), key, null, false, false);
+        expectedModCount = modCount;                                          //关键语句，这里做了一个同步，否则与正常的删除没有区别，这个同步避免了上面的异常抛出
+    }
+</code></pre><p>　　与普通的删除方法就差在最后这一行上，这里同步了迭代器和HashMap对象的操作数，便不会抛出异常。</p>
+]]></content>
+      
+        
+        <tags>
+            
+            <tag> JDKCode </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[MyBatis源码解析：动态SQL]]></title>
       <url>/2017/06/15/mybatis-12/</url>
-      <content type="html"><![CDATA[<h1 id="1-MyBatis中和动态SQl相关的类"><a href="#1-MyBatis中和动态SQl相关的类" class="headerlink" title="1. MyBatis中和动态SQl相关的类"></a>1. MyBatis中和动态SQl相关的类</h1><h2 id="1-1-BaseBuilder"><a href="#1-1-BaseBuilder" class="headerlink" title="1.1. BaseBuilder"></a>1.1. BaseBuilder</h2><p><img src="/images/mybatis_24.png" alt=""><br><a id="more"></a></p>
+      <content type="html"><![CDATA[<h2 id="MyBatis中和动态SQl相关的类"><a href="#MyBatis中和动态SQl相关的类" class="headerlink" title="MyBatis中和动态SQl相关的类"></a>MyBatis中和动态SQl相关的类</h2><h3 id="BaseBuilder"><a href="#BaseBuilder" class="headerlink" title="BaseBuilder"></a>BaseBuilder</h3><p><img src="/images/mybatis_24.png" alt=""><br><a id="more"></a></p>
 <p>BaseBuilder主要负责解析xml配置文件，以及构建各种相关的实例：</p>
 <ul>
 <li>XMLConfigBuilder：解析全局xml配置文件</li>
@@ -15,7 +1194,7 @@
 <li>MapperBuilderAssistant：辅助构建工具类</li>
 <li>SqlSourceBuilder：sql源构建类</li>
 </ul>
-<h2 id="1-2-SqlNode"><a href="#1-2-SqlNode" class="headerlink" title="1.2. SqlNode"></a>1.2. SqlNode</h2><p><img src="/images/mybatis_25.png" alt=""></p>
+<h3 id="SqlNode"><a href="#SqlNode" class="headerlink" title="SqlNode"></a>SqlNode</h3><p><img src="/images/mybatis_25.png" alt=""></p>
 <p>SqlNode对应的就是动态sql的各种标签了：</p>
 <ul>
 <li>ChooseSqlNode：对应choose标签，类似于switch功能</li>
@@ -29,20 +1208,20 @@
 <li>WhereSqlNode：TrimSqlNode的where调用</li>
 <li>VarDeclSqlNode：对应bind标签，用于解析Ognl表达式</li>
 </ul>
-<h2 id="1-3-SqlSource"><a href="#1-3-SqlSource" class="headerlink" title="1.3. SqlSource"></a>1.3. SqlSource</h2><p><img src="/images/mybatis_26.png" alt=""><br>SqlSource是处理xml配置文件中的sql部分的工具：</p>
+<h3 id="SqlSource"><a href="#SqlSource" class="headerlink" title="SqlSource"></a>SqlSource</h3><p><img src="/images/mybatis_26.png" alt=""><br>SqlSource是处理xml配置文件中的sql部分的工具：</p>
 <ul>
 <li>DynamicSqlSource：创建动态sqlSourse</li>
 <li>ProviderSqlSource：处理通用mapper</li>
 <li>RawSqlSource：处理静态sql</li>
 <li>StaticSqlSource：创建静态sqlSourse</li>
 </ul>
-<h2 id="1-4-LanguageDriver"><a href="#1-4-LanguageDriver" class="headerlink" title="1.4. LanguageDriver"></a>1.4. LanguageDriver</h2><p>　　LanguageDriver主要实现类是XMLLanguageDriver，XMLLanguageDriver内部使用XMLScriptBuilder解析sql节点，用于生成SqlSource。</p>
-<h1 id="2-动态Sql创建流程"><a href="#2-动态Sql创建流程" class="headerlink" title="2. 动态Sql创建流程"></a>2. 动态Sql创建流程</h1><p><img src="/images/mybatis_26.png" alt=""></p>
+<h3 id="LanguageDriver"><a href="#LanguageDriver" class="headerlink" title="LanguageDriver"></a>LanguageDriver</h3><p>　　LanguageDriver主要实现类是XMLLanguageDriver，XMLLanguageDriver内部使用XMLScriptBuilder解析sql节点，用于生成SqlSource。</p>
+<h2 id="动态Sql创建流程"><a href="#动态Sql创建流程" class="headerlink" title="动态Sql创建流程"></a>动态Sql创建流程</h2><p><img src="/images/mybatis_26.png" alt=""></p>
 <p>　　mapper的路径既然是在全局xml中配置的，那么入口自然也要落在创建运行环境上下文中</p>
 <pre><code>private void parseConfiguration(XNode root) {
     try {
-     //TODO
-//此处进入解析mappers节点流程
+      //TODO
+      //此处进入解析mappers节点流程
       mapperElement(root.evalNode(&quot;mappers&quot;));
     } catch (Exception e) {
       throw new BuilderException(&quot;Error parsing SQL Mapper Configuration. Cause: &quot; + e, e);
@@ -169,7 +1348,7 @@ private void configurationElement(XNode context) {
     return sqlSource;
   }
 </code></pre><p>　　至此就完成了mapper配置文件的读取注册流程。</p>
-<p>3、通过sql模板生成动态sql流程<br><img src="/images/mybatis_28.png" alt=""></p>
+<h2 id="通过sql模板生成动态sql流程"><a href="#通过sql模板生成动态sql流程" class="headerlink" title="通过sql模板生成动态sql流程"></a>通过sql模板生成动态sql流程</h2><p><img src="/images/mybatis_28.png" alt=""></p>
 <p>　　既然是动态sql，那自然是运行时才会根据参数生成执行sql了，下面以query为例，简析生成动态sql的流程：<br>　　首先在CachingExecutor中调用query</p>
 <pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
     BoundSql boundSql = ms.getBoundSql(parameterObject);
@@ -246,8 +1425,8 @@ private void configurationElement(XNode context) {
       <title><![CDATA[MyBatis源码解析：Plugin]]></title>
       <url>/2017/06/15/mybatis-11/</url>
       <content type="html"><![CDATA[<p>　　Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。</p>
-<h1 id="1-Plugin可以做什么"><a href="#1-Plugin可以做什么" class="headerlink" title="1. Plugin可以做什么"></a>1. Plugin可以做什么</h1><p>　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。<br><a id="more"></a></p>
-<h1 id="2-Plugin如何工作"><a href="#2-Plugin如何工作" class="headerlink" title="2. Plugin如何工作"></a>2. Plugin如何工作</h1><p><img src="/images/mybatis_23.png" alt=""></p>
+<h2 id="Plugin可以做什么"><a href="#Plugin可以做什么" class="headerlink" title="Plugin可以做什么"></a>Plugin可以做什么</h2><p>　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。<br><a id="more"></a></p>
+<h2 id="Plugin如何工作"><a href="#Plugin如何工作" class="headerlink" title="Plugin如何工作"></a>Plugin如何工作</h2><p><img src="/images/mybatis_23.png" alt=""></p>
 <p>　　要使用Plugin首先要在config中进行配置</p>
 <pre><code>&lt;plugins&gt;
     &lt;plugin interceptor=&quot;interceptor.ExampleInterceptor&quot;&gt;&lt;/plugin&gt;
@@ -314,15 +1493,21 @@ public static Object wrap(Object target, Interceptor interceptor) {
   //执行被拦截方法
         return invocation.proceed();
     }
-</code></pre><h1 id="3-多个Plugin的执行顺序"><a href="#3-多个Plugin的执行顺序" class="headerlink" title="3. 多个Plugin的执行顺序"></a>3. 多个Plugin的执行顺序</h1><p>　　上边既然提到了拦截器链，那自然是可以配置多个Plugin的</p>
+</code></pre><h2 id="多个Plugin的执行顺序"><a href="#多个Plugin的执行顺序" class="headerlink" title="多个Plugin的执行顺序"></a>多个Plugin的执行顺序</h2><p>　　上边既然提到了拦截器链，那自然是可以配置多个Plugin的</p>
 <pre><code>&lt;plugins&gt;
          &lt;plugin interceptor=&quot;interceptor.Interceptor1&quot;&gt;&lt;/plugin&gt;
          &lt;plugin interceptor=&quot;interceptor.Interceptor2&quot;&gt;&lt;/plugin&gt;
          &lt;plugin interceptor=&quot;interceptor.Interceptor3&quot;&gt;&lt;/plugin&gt;
  &lt;/plugins&gt;
-</code></pre><p>　　上面配置了三个Plugin，在创建运行环境（Configuration）时会依次将Plugin注册在拦截器中，但是为对象绑定代理时顺序则出现了一些不一样的地方，代理的执行顺序却不一定与绑定的顺序一致。如上面的intercept方法：<br>　　<br>    public Object intercept(Invocation invocation) throws Throwable {<br>            //TODO1<br>      invocation.proceed();<br>            //TODO2<br>        }<br>　　如果是这种形式的拦截器，则会先执行TODO1，然后执行下级拦截器，之后再转回TODO2。</p>
-<h1 id="4-拦截器的优缺点"><a href="#4-拦截器的优缺点" class="headerlink" title="4. 拦截器的优缺点"></a>4. 拦截器的优缺点</h1><p>　　在漫长的开发过程中，因为人自身的问题导致的程序bug层出不穷，框架就是在这种情况下应运而生，框架简化了编码的操作，极大的拉进了技术人员的差距，但是框架也封装了底层的操作，使得开发人员对程序的把控程度更低了，如果框架的一小部分不适合实际的业务，但是又无法更换框架的时候就需要Plugin这种存在，Plugin是MyBatis主动提供出来的流程修改入口，只要你想，甚至可以改变SqlSession的执行流程。</p>
-<p>　　Plugin可以使得开发人员可以根据具体业务对MyBatis的底层做适当的干涉，但是这里就牵涉到第一个问题，人员的问题，如果开发人员自身技术不是很深入，有可能导致整个流程崩溃！一定要慎用！<br>而且过多的拦截器会极大的消耗服务器资源，导致运行缓慢。</p>
+</code></pre><p>　　上面配置了三个Plugin，在创建运行环境（Configuration）时会依次将Plugin注册在拦截器中，但是为对象绑定代理时顺序则出现了一些不一样的地方，代理的执行顺序却不一定与绑定的顺序一致。如上面的intercept方法：</p>
+<pre><code>public Object intercept(Invocation invocation) throws Throwable {
+        //TODO1
+  invocation.proceed();
+        //TODO2
+    }
+</code></pre><p>　　如果是这种形式的拦截器，则会先执行TODO1，然后执行下级拦截器，之后再转回TODO2。</p>
+<h2 id="拦截器的优缺点"><a href="#拦截器的优缺点" class="headerlink" title="拦截器的优缺点"></a>拦截器的优缺点</h2><p>　　在漫长的开发过程中，因为人自身的问题导致的程序bug层出不穷，框架就是在这种情况下应运而生，框架简化了编码的操作，极大的拉进了技术人员的差距，但是框架也封装了底层的操作，使得开发人员对程序的把控程度更低了，如果框架的一小部分不适合实际的业务，但是又无法更换框架的时候就需要Plugin这种存在，Plugin是MyBatis主动提供出来的流程修改入口，只要你想，甚至可以改变SqlSession的执行流程。</p>
+<p>　　Plugin可以使得开发人员可以根据具体业务对MyBatis的底层做适当的干涉，但是这里就牵涉到第一个问题，人员的问题，如果开发人员自身技术不是很深入，有可能导致整个流程崩溃！一定要慎用！而且过多的拦截器会极大的消耗服务器资源，导致运行缓慢。</p>
 ]]></content>
       
         
@@ -337,11 +1522,11 @@ public static Object wrap(Object target, Interceptor interceptor) {
     <entry>
       <title><![CDATA[MyBatis源码解析：MetaObject]]></title>
       <url>/2017/06/15/mybatis-10/</url>
-      <content type="html"><![CDATA[<p>　　MyBatis作为一款ORM框架，反射是必不可少的一环，reflection就是MyBatis的反射模块。从代码角度来看reflection包相当的独立，除了jdk之外没有其他的包外引用，完全可以单独提取出来作为工具使用。<br><img src="/images/mybatis_18.png" alt=""><br><a id="more"></a></p>
-<h1 id="1-MetaObject创建流程"><a href="#1-MetaObject创建流程" class="headerlink" title="1. MetaObject创建流程"></a>1. MetaObject创建流程</h1><p><img src="/images/mybatis_19.png" alt=""></p>
-<h1 id="2-MetaObject"><a href="#2-MetaObject" class="headerlink" title="2. MetaObject"></a>2. MetaObject</h1><p><img src="/images/mybatis_20.png" alt=""></p>
+      <content type="html"><![CDATA[<p>　　MyBatis作为一款ORM框架，反射是必不可少的一环，reflection就是MyBatis的反射模块。从代码角度来看reflection包相当的独立，除了jdk之外没有其他的包外引用，完全可以单独提取出来作为工具使用。<br><a id="more"></a><br><img src="/images/mybatis_18.png" alt=""></p>
+<h2 id="MetaObject创建流程"><a href="#MetaObject创建流程" class="headerlink" title="MetaObject创建流程"></a>MetaObject创建流程</h2><p><img src="/images/mybatis_19.png" alt=""></p>
+<h2 id="MetaObject"><a href="#MetaObject" class="headerlink" title="MetaObject"></a>MetaObject</h2><p><img src="/images/mybatis_20.png" alt=""></p>
 <p>　　MetaObject作为reflection暴露在最外层的调用类，不仅承载了提供反射的各种实现调用的入口的责任，还担任了下层调用对象（ObjectWrapper包装者）的分发任务，MetaObject只有一个私有的构造方法，所以想创建MetaObject的实例只能通过MetaObject.forObject方法。</p>
-<pre><code> public static MetaObject forObject(Object object, ObjectFactory objectFactory, ObjectWrapperFactory objectWrapperFactory, ReflectorFactory reflectorFactory) {
+<pre><code>public static MetaObject forObject(Object object, ObjectFactory objectFactory, ObjectWrapperFactory objectWrapperFactory, ReflectorFactory reflectorFactory) {
     if (object == null) {
       return SystemMetaObject.NULL_META_OBJECT;
     } else {
@@ -367,7 +1552,7 @@ private MetaObject(Object object, ObjectFactory objectFactory, ObjectWrapperFact
       this.objectWrapper = new BeanWrapper(this, object);
     }
   }
-</code></pre><p>既然MetaObject是以反射为基础，那么总重要的自然是getter和setter的实现，下面看一下MetaObject是如何操作属性的：</p>
+</code></pre><p>　　既然MetaObject是以反射为基础，那么总重要的自然是getter和setter的实现，下面看一下MetaObject是如何操作属性的：</p>
 <pre><code> public Object getValue(String name) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
@@ -407,8 +1592,8 @@ public void setValue(String name, Object value) {
       objectWrapper.set(prop, value);
     }
   }
-</code></pre><p>由上面代码可以看出，MetaObject作为一个反射入口，关键方法的抽象程度是很高的，在这一层也仅仅处理了对象这一层级的逻辑，凡事涉及具体属性的步骤都下放到ObjectWrapper中执行。</p>
-<h1 id="3-ObjectWrapper"><a href="#3-ObjectWrapper" class="headerlink" title="3. ObjectWrapper"></a>3. ObjectWrapper</h1><p><img src="/images/mybatis_21.png" alt=""><br>　　上面的MetaObject将指定的属性定位到最后一级，然后就轮到ObjectWrapper出场了，ObjectWrapper主要的职责就是处理这个最后一级的类型，不仅支持简单属性的操作，还兼容集合类型的属性。</p>
+</code></pre><p>　　由上面代码可以看出，MetaObject作为一个反射入口，关键方法的抽象程度是很高的，在这一层也仅仅处理了对象这一层级的逻辑，凡事涉及具体属性的步骤都下放到ObjectWrapper中执行。</p>
+<h2 id="ObjectWrapper"><a href="#ObjectWrapper" class="headerlink" title="ObjectWrapper"></a>ObjectWrapper</h2><p><img src="/images/mybatis_21.png" alt=""><br>　　上面的MetaObject将指定的属性定位到最后一级，然后就轮到ObjectWrapper出场了，ObjectWrapper主要的职责就是处理这个最后一级的类型，不仅支持简单属性的操作，还兼容集合类型的属性。</p>
 <pre><code>public Object get(PropertyTokenizer prop) {
     if (prop.getIndex() != null) {
       //如果是子级对象是集合类型，则先取出集合对象
@@ -432,9 +1617,9 @@ public void set(PropertyTokenizer prop, Object value) {
     }
   }
 /**
-   * 实例化子级对象的元对象
-   */
-  public MetaObject instantiatePropertyValue(String name, PropertyTokenizer prop, ObjectFactory objectFactory) {
+ * 实例化子级对象的元对象
+ */
+public MetaObject instantiatePropertyValue(String name, PropertyTokenizer prop, ObjectFactory objectFactory) {
     MetaObject metaValue;
     Class&lt;?&gt; type = getSetterType(prop.getName());
     try {
@@ -464,24 +1649,24 @@ private Object getBeanProperty(PropertyTokenizer prop, Object object) {
       throw new ReflectionException(&quot;Could not get property &apos;&quot; + prop.getName() + &quot;&apos; from &quot; + object.getClass() + &quot;.  Cause: &quot; + t.toString(), t);
     }
   }
-</code></pre><p>从这个方法可以看出，实际的操作是下放到MetaClass中的，而Invoker才是真正的反射调用器。</p>
-<h1 id="4-MetaClass"><a href="#4-MetaClass" class="headerlink" title="4. MetaClass"></a>4. MetaClass</h1><p><img src="/images/mybatis_22.png" alt=""></p>
+</code></pre><p>　　从这个方法可以看出，实际的操作是下放到MetaClass中的，而Invoker才是真正的反射调用器。</p>
+<h2 id="MetaClass"><a href="#MetaClass" class="headerlink" title="MetaClass"></a>MetaClass</h2><p><img src="/images/mybatis_22.png" alt=""></p>
 <p>　　MetaClass在我的理解里有些类似模板，MetaClass与MetaObject的关系类似于类与实例，MetaClass提供了类的各种属性方法的反射调用器，MetaObject提供了具体对象的引用，通过ObjectWrapper这个黑中介就联系到了一起。</p>
 <pre><code>//获取name属性的getter调用器
-  public Invoker getGetInvoker(String name) {
+public Invoker getGetInvoker(String name) {
     return reflector.getGetInvoker(name);
   }
 
-  //获取name属性的setter调用器
-  public Invoker getSetInvoker(String name) {
+//获取name属性的setter调用器
+public Invoker getSetInvoker(String name) {
     return reflector.getSetInvoker(name);
   }
 /**
-   * 获取prop中一级属性的类型
-   * @param prop
-   * @return
-   */
-  private Class&lt;?&gt; getGetterType(PropertyTokenizer prop) {
+ * 获取prop中一级属性的类型
+ * @param prop
+ * @return
+ */
+private Class&lt;?&gt; getGetterType(PropertyTokenizer prop) {
     Class&lt;?&gt; type = reflector.getGetterType(prop.getName());
     if (prop.getIndex() != null &amp;&amp; Collection.class.isAssignableFrom(type)) {
       //prop指定属性为实现了Collection接口的集合类型
@@ -501,11 +1686,11 @@ private Object getBeanProperty(PropertyTokenizer prop, Object object) {
     return type;
   }
 /**
-   * 查询是否存在name属性的setter方法
-   * @param name
-   * @return
-   */
-  public boolean hasSetter(String name) {
+ * 查询是否存在name属性的setter方法
+ * @param name
+ * @return
+ */
+public boolean hasSetter(String name) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
       //如果是多级属性，会依次向下递归，查询指定的最底层属性的setter方法
@@ -519,21 +1704,21 @@ private Object getBeanProperty(PropertyTokenizer prop, Object object) {
       return reflector.hasSetter(prop.getName());
     }
   }
-</code></pre><h1 id="5-Reflector"><a href="#5-Reflector" class="headerlink" title="5. Reflector"></a>5. Reflector</h1><p>　　Reflector是整个反射模块的核心，是维护Invoker的容器，所有的反射操作都会放到Reflector来进行调度。下面看下Reflector的初始化流程：</p>
+</code></pre><h2 id="Reflector"><a href="#Reflector" class="headerlink" title="Reflector"></a>Reflector</h2><p>　　Reflector是整个反射模块的核心，是维护Invoker的容器，所有的反射操作都会放到Reflector来进行调度。下面看下Reflector的初始化流程：</p>
 <pre><code>//反射容器对应的类
-  private Class&lt;?&gt; type;
-  //setter方法调用器缓存
-  private Map&lt;String, Invoker&gt; setMethods = new HashMap&lt;String, Invoker&gt;();
-  //getter方法调用器缓存
-  private Map&lt;String, Invoker&gt; getMethods = new HashMap&lt;String, Invoker&gt;();
-  //setter方法对应属性类型缓存
-  private Map&lt;String, Class&lt;?&gt;&gt; setTypes = new HashMap&lt;String, Class&lt;?&gt;&gt;();
-  //getter方法对应属性类型缓存
-  private Map&lt;String, Class&lt;?&gt;&gt; getTypes = new HashMap&lt;String, Class&lt;?&gt;&gt;();
-  //默认构造器
-  private Constructor&lt;?&gt; defaultConstructor;
-  //全大写属性名集合，为了兼容传入参数的大小写
-  private Map&lt;String, String&gt; caseInsensitivePropertyMap = new HashMap&lt;String, String&gt;();
+private Class&lt;?&gt; type;
+//setter方法调用器缓存
+private Map&lt;String, Invoker&gt; setMethods = new HashMap&lt;String, Invoker&gt;();
+//getter方法调用器缓存
+private Map&lt;String, Invoker&gt; getMethods = new HashMap&lt;String, Invoker&gt;();
+//setter方法对应属性类型缓存
+private Map&lt;String, Class&lt;?&gt;&gt; setTypes = new HashMap&lt;String, Class&lt;?&gt;&gt;();
+//getter方法对应属性类型缓存
+private Map&lt;String, Class&lt;?&gt;&gt; getTypes = new HashMap&lt;String, Class&lt;?&gt;&gt;();
+//默认构造器
+private Constructor&lt;?&gt; defaultConstructor;
+//全大写属性名集合，为了兼容传入参数的大小写
+private Map&lt;String, String&gt; caseInsensitivePropertyMap = new HashMap&lt;String, String&gt;();
 
 public Reflector(Class&lt;?&gt; clazz) {
     type = clazz;
@@ -558,9 +1743,9 @@ public Reflector(Class&lt;?&gt; clazz) {
     }
   }
 /**
-   * 注册无参构造方法
-   */
-  private void addDefaultConstructor(Class&lt;?&gt; clazz) {
+ * 注册无参构造方法
+ */
+private void addDefaultConstructor(Class&lt;?&gt; clazz) {
     //获取clazz的所有构造器
     Constructor&lt;?&gt;[] consts = clazz.getDeclaredConstructors();
     for (Constructor&lt;?&gt; constructor : consts) {
@@ -581,10 +1766,10 @@ public Reflector(Class&lt;?&gt; clazz) {
     }
   }
 /**
-   * 注册getter方法
-   * @param cls
-   */
-  private void addGetMethods(Class&lt;?&gt; cls) {
+ * 注册getter方法
+ * @param cls
+ */
+ private void addGetMethods(Class&lt;?&gt; cls) {
     Map&lt;String, List&lt;Method&gt;&gt; conflictingGetters = new HashMap&lt;String, List&lt;Method&gt;&gt;();
     //获取cls中的所有方法，包括父类和接口中的方法
     Method[] methods = getClassMethods(cls);
@@ -605,10 +1790,10 @@ public Reflector(Class&lt;?&gt; clazz) {
     resolveGetterConflicts(conflictingGetters);
   }
 /**
-   * 过滤掉同一名称的getter方法，返回值为同一继承树的类型以子类型为主
-   * @param conflictingGetters
-   */
-  private void resolveGetterConflicts(Map&lt;String, List&lt;Method&gt;&gt; conflictingGetters) {
+ * 过滤掉同一名称的getter方法，返回值为同一继承树的类型以子类型为主
+ * @param conflictingGetters
+ */
+private void resolveGetterConflicts(Map&lt;String, List&lt;Method&gt;&gt; conflictingGetters) {
     for (Entry&lt;String, List&lt;Method&gt;&gt; entry : conflictingGetters.entrySet()) {
       Method winner = null;
       String propName = entry.getKey();
@@ -646,10 +1831,10 @@ public Reflector(Class&lt;?&gt; clazz) {
     }
   }
 /**
-   * 注册setter方法
-   * @param cls
-   */
-  private void addSetMethods(Class&lt;?&gt; cls) {
+ * 注册setter方法
+ * @param cls
+ */
+private void addSetMethods(Class&lt;?&gt; cls) {
     Map&lt;String, List&lt;Method&gt;&gt; conflictingSetters = new HashMap&lt;String, List&lt;Method&gt;&gt;();
     Method[] methods = getClassMethods(cls);
     for (Method method : methods) {
@@ -666,12 +1851,12 @@ public Reflector(Class&lt;?&gt; clazz) {
     resolveSetterConflicts(conflictingSetters);
   }
 /**
-   * 将method添加值conflictingMethods集合,可以支持同一属性多个方法
-   * @param conflictingMethods
-   * @param name
-   * @param method
-   */
-  private void addMethodConflict(Map&lt;String, List&lt;Method&gt;&gt; conflictingMethods, String name, Method method) {
+ * 将method添加值conflictingMethods集合,可以支持同一属性多个方法
+ * @param conflictingMethods
+ * @param name
+ * @param method
+ */
+private void addMethodConflict(Map&lt;String, List&lt;Method&gt;&gt; conflictingMethods, String name, Method method) {
     List&lt;Method&gt; list = conflictingMethods.get(name);
     if (list == null) {
       list = new ArrayList&lt;Method&gt;();
@@ -680,10 +1865,10 @@ public Reflector(Class&lt;?&gt; clazz) {
     list.add(method);
   }
 /**
-   * 过滤掉同一名称的setter方法，返回值为同一继承树的类型以子类型为主
-   * @param conflictingGetters
-   */
-  private void resolveSetterConflicts(Map&lt;String, List&lt;Method&gt;&gt; conflictingSetters) {
+ * 过滤掉同一名称的setter方法，返回值为同一继承树的类型以子类型为主
+ * @param conflictingGetters
+ */
+private void resolveSetterConflicts(Map&lt;String, List&lt;Method&gt;&gt; conflictingSetters) {
     for (String propName : conflictingSetters.keySet()) {
       List&lt;Method&gt; setters = conflictingSetters.get(propName);
       //从缓存集合中获取propName属性对应的get类型
@@ -716,10 +1901,10 @@ public Reflector(Class&lt;?&gt; clazz) {
     }
   }
 /**
-   * 注册属性
-   * @param clazz
-   */
-  private void addFields(Class&lt;?&gt; clazz) {
+ * 注册属性
+ * @param clazz
+ */
+private void addFields(Class&lt;?&gt; clazz) {
     Field[] fields = clazz.getDeclaredFields();
     for (Field field : fields) {
       //检查是否能够访问类中的字段和调用方法。注意，这不仅包括 public. 而且还包括 protected 和 private 字段和方法。
@@ -749,35 +1934,36 @@ public Reflector(Class&lt;?&gt; clazz) {
       addFields(clazz.getSuperclass());
     }
   }
-</code></pre><h1 id="6-Invoker"><a href="#6-Invoker" class="headerlink" title="6. Invoker"></a>6. Invoker</h1><p>作为具体的反射操作调用器，Invoker提供了三种默认实现。</p>
+</code></pre><h2 id="Invoker"><a href="#Invoker" class="headerlink" title="Invoker"></a>Invoker</h2><p>作为具体的反射操作调用器，Invoker提供了三种默认实现。</p>
 <ul>
-<li><p>GetFieldInvoker：属性get方法调用器</p>
-<p>  public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {</p>
-<pre><code>  return field.get(target);
-}
-</code></pre></li>
-<li><p>SetFieldInvoker：属性set方法调用器</p>
-<p>  public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {</p>
-<pre><code>  field.set(target, args[0]);
-  return null;
-}
-</code></pre></li>
-<li><p>MethodInvoker：方法调用器</p>
-<p>  public MethodInvoker(Method method) {</p>
-<pre><code>  this.method = method;
-  //此处设置类型是为了方便get. set方法
-  if (method.getParameterTypes().length == 1) {
-    type = method.getParameterTypes()[0];
-  } else {
-    type = method.getReturnType();
-  }
-}
-</code></pre><p>  public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {</p>
-<pre><code>  return method.invoke(target, args);
-}
-</code></pre></li>
+<li>GetFieldInvoker：属性get方法调用器</li>
 </ul>
-<h1 id="7-PropertyTokenizer"><a href="#7-PropertyTokenizer" class="headerlink" title="7. PropertyTokenizer"></a>7. PropertyTokenizer</h1><p>　　PropertyTokenizer负责处理传入的属性名字符串，这里不仅支持单级，还支持多级和集合类型的属性名。</p>
+<pre><code>public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {
+    return field.get(target);
+  }
+</code></pre><ul>
+<li>SetFieldInvoker：属性set方法调用器</li>
+</ul>
+<pre><code>public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {
+    field.set(target, args[0]);
+    return null;
+  }
+</code></pre><ul>
+<li>MethodInvoker：方法调用器</li>
+</ul>
+<pre><code>public MethodInvoker(Method method) {
+    this.method = method;
+    //此处设置类型是为了方便get. set方法
+    if (method.getParameterTypes().length == 1) {
+      type = method.getParameterTypes()[0];
+    } else {
+      type = method.getReturnType();
+    }
+  }
+public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {
+    return method.invoke(target, args);
+  }
+</code></pre><h2 id="PropertyTokenizer"><a href="#PropertyTokenizer" class="headerlink" title="PropertyTokenizer"></a>PropertyTokenizer</h2><p>　　PropertyTokenizer负责处理传入的属性名字符串，这里不仅支持单级，还支持多级和集合类型的属性名。</p>
 <pre><code>public PropertyTokenizer(String fullname) {
     int delim = fullname.indexOf(&apos;.&apos;);
     if (delim &gt; -1) {
@@ -800,13 +1986,13 @@ public Reflector(Class&lt;?&gt; clazz) {
       name = name.substring(0, delim);
     }
   }
-</code></pre><h1 id="8-PropertyNamer"><a href="#8-PropertyNamer" class="headerlink" title="8. PropertyNamer"></a>8. PropertyNamer</h1><p>　　PropertyNamer通过方法名获取对应属性名，仅支持get. set. is开头的方法</p>
+</code></pre><h2 id="PropertyNamer"><a href="#PropertyNamer" class="headerlink" title="PropertyNamer"></a>PropertyNamer</h2><p>　　PropertyNamer通过方法名获取对应属性名，仅支持get. set. is开头的方法</p>
 <pre><code>/**
-   * 通过方法名获取对应的属性名，只支持get. set和is开头的方法
-   * @param name
-   * @return
-   */
-  public static String methodToProperty(String name) {
+ * 通过方法名获取对应的属性名，只支持get. set和is开头的方法
+ * @param name
+ * @return
+ */
+public static String methodToProperty(String name) {
     if (name.startsWith(&quot;is&quot;)) {
       name = name.substring(2);
     } else if (name.startsWith(&quot;get&quot;) || name.startsWith(&quot;set&quot;)) {
@@ -819,7 +2005,7 @@ public Reflector(Class&lt;?&gt; clazz) {
     }
     return name;
   }
-</code></pre><h1 id="9-为什么使用MetaObject"><a href="#9-为什么使用MetaObject" class="headerlink" title="9. 为什么使用MetaObject"></a>9. 为什么使用MetaObject</h1><p>　　MetaObject提供了方便而优雅的方式来操作对象的属性，不仅不需要手动处理各种reflect异常，还可以无视变量的作用域。</p>
+</code></pre><h2 id="为什么使用MetaObject"><a href="#为什么使用MetaObject" class="headerlink" title="为什么使用MetaObject"></a>为什么使用MetaObject</h2><p>　　MetaObject提供了方便而优雅的方式来操作对象的属性，不仅不需要手动处理各种reflect异常，还可以无视变量的作用域。</p>
 <p>　　MetaObject还支持Map和Connection形式的对象，不过相对javaBean来讲简单很多，此处不在赘述。</p>
 ]]></content>
       
@@ -836,9 +2022,9 @@ public Reflector(Class&lt;?&gt; clazz) {
       <title><![CDATA[MyBatis源码解析：数据源和连接池]]></title>
       <url>/2017/06/15/mybatis-9/</url>
       <content type="html"><![CDATA[<p>　　MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。</p>
-<h1 id="1-DataSource的三种类型"><a href="#1-DataSource的三种类型" class="headerlink" title="1. DataSource的三种类型"></a>1. DataSource的三种类型</h1><p>MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。<br><a id="more"></a></p>
-<h1 id="2-DataSource的创建过程"><a href="#2-DataSource的创建过程" class="headerlink" title="2. DataSource的创建过程"></a>2. DataSource的创建过程</h1><p><img src="/images/mybatis_14.png" alt=""></p>
-<h2 id="2-1-在config-xml中配置environments标签"><a href="#2-1-在config-xml中配置environments标签" class="headerlink" title="2.1. 在config.xml中配置environments标签"></a>2.1. 在config.xml中配置environments标签</h2><pre><code>&lt;environments default=&quot;development1&quot;&gt;
+<h2 id="DataSource的三种类型"><a href="#DataSource的三种类型" class="headerlink" title="DataSource的三种类型"></a>DataSource的三种类型</h2><p>　　MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。<br><a id="more"></a></p>
+<h2 id="DataSource的创建过程"><a href="#DataSource的创建过程" class="headerlink" title="DataSource的创建过程"></a>DataSource的创建过程</h2><p><img src="/images/mybatis_14.png" alt=""></p>
+<h3 id="在config-xml中配置environments标签"><a href="#在config-xml中配置environments标签" class="headerlink" title="在config.xml中配置environments标签"></a>在config.xml中配置environments标签</h3><pre><code>&lt;environments default=&quot;development1&quot;&gt;
      &lt;environment id=&quot;development1&quot;&gt;
          &lt;transactionManager type=&quot;JDBC&quot;&gt;&lt;/transactionManager&gt;
          &lt;dataSource type=&quot;UNPOOLED&quot;&gt;
@@ -849,8 +2035,8 @@ public Reflector(Class&lt;?&gt; clazz) {
          &lt;/dataSource&gt;
      &lt;/environment&gt;
 &lt;/environments&gt;
-</code></pre><h2 id="2-2-创建SqlSessionFactory"><a href="#2-2-创建SqlSessionFactory" class="headerlink" title="2.2. 创建SqlSessionFactory"></a>2.2. 创建SqlSessionFactory</h2><pre><code>SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(is,&quot;development1&quot;);
-</code></pre><h2 id="2-3-构造Configuration实例"><a href="#2-3-构造Configuration实例" class="headerlink" title="2.3. 构造Configuration实例"></a>2.3. 构造Configuration实例</h2><pre><code>public Configuration parse() {
+</code></pre><h3 id="创建SqlSessionFactory"><a href="#创建SqlSessionFactory" class="headerlink" title="创建SqlSessionFactory"></a>创建SqlSessionFactory</h3><pre><code>SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(is,&quot;development1&quot;);
+</code></pre><h3 id="构造Configuration实例"><a href="#构造Configuration实例" class="headerlink" title="构造Configuration实例"></a>构造Configuration实例</h3><pre><code>public Configuration parse() {
     if (parsed) {
       throw new BuilderException(&quot;Each XMLConfigBuilder can only be used once.&quot;);
     }
@@ -859,7 +2045,7 @@ public Reflector(Class&lt;?&gt; clazz) {
     parseConfiguration(parser.evalNode(&quot;/configuration&quot;));
     return configuration;
   }
-</code></pre><h2 id="2-4-读取environments标签"><a href="#2-4-读取environments标签" class="headerlink" title="2.4. 读取environments标签"></a>2.4. 读取environments标签</h2><pre><code>private void environmentsElement(XNode context) throws Exception {
+</code></pre><h3 id="读取environments标签"><a href="#读取environments标签" class="headerlink" title="读取environments标签"></a>读取environments标签</h3><pre><code>private void environmentsElement(XNode context) throws Exception {
     if (context != null) {
       //如果构建SqlSessionFactory时传入了environment参数，则使用指定数据源，否则使用配置的默认数据源
       if (environment == null) {
@@ -884,10 +2070,10 @@ public Reflector(Class&lt;?&gt; clazz) {
       }
     }
   }
-</code></pre><h1 id="3-不使用连接池的DataSource"><a href="#3-不使用连接池的DataSource" class="headerlink" title="3. 不使用连接池的DataSource"></a>3. 不使用连接池的DataSource</h1><p><img src="/images/mybatis_15.png" alt=""></p>
+</code></pre><h2 id="不使用连接池的DataSource"><a href="#不使用连接池的DataSource" class="headerlink" title="不使用连接池的DataSource"></a>不使用连接池的DataSource</h2><p><img src="/images/mybatis_15.png" alt=""></p>
 <p>UnpooledDataSource相对PooledDataSource简单一点，每次调用都创建一个数据库连接，执行之后连接即可销毁。相关类主要有以下两个</p>
-<h2 id="3-1-UnpooledDataSourceFactory"><a href="#3-1-UnpooledDataSourceFactory" class="headerlink" title="3.1. UnpooledDataSourceFactory"></a>3.1. UnpooledDataSourceFactory</h2><p>只有两个方法setProperties和getDataSource，一个设置数据源参数，一个获取数据源。</p>
-<h2 id="3-2-UnpooledDataSource"><a href="#3-2-UnpooledDataSource" class="headerlink" title="3.2. UnpooledDataSource"></a>3.2. UnpooledDataSource</h2><p>既然是数据源，那最重要也就是获取数据库连接的方法了，下面看下获取数据库连接的方法：</p>
+<h3 id="UnpooledDataSourceFactory"><a href="#UnpooledDataSourceFactory" class="headerlink" title="UnpooledDataSourceFactory"></a>UnpooledDataSourceFactory</h3><p>只有两个方法setProperties和getDataSource，一个设置数据源参数，一个获取数据源。</p>
+<h3 id="UnpooledDataSource"><a href="#UnpooledDataSource" class="headerlink" title="UnpooledDataSource"></a>UnpooledDataSource</h3><p>既然是数据源，那最重要也就是获取数据库连接的方法了，下面看下获取数据库连接的方法：</p>
 <pre><code>private Connection doGetConnection(Properties properties) throws SQLException {
     //初始化数据库驱动，如果environment中的driver属性配置的数据库驱动没有初始化，则会通过反射加载指定驱动
     initializeDriver();
@@ -897,10 +2083,10 @@ public Reflector(Class&lt;?&gt; clazz) {
     configureConnection(connection);
     return connection;
   }
-</code></pre><h1 id="4-使用连接池的DataSource"><a href="#4-使用连接池的DataSource" class="headerlink" title="4. 使用连接池的DataSource"></a>4. 使用连接池的DataSource</h1><p><img src="/images/mybatis_16.png" alt=""></p>
+</code></pre><h2 id="使用连接池的DataSource"><a href="#使用连接池的DataSource" class="headerlink" title="使用连接池的DataSource"></a>使用连接池的DataSource</h2><p><img src="/images/mybatis_16.png" alt=""></p>
 <p>　　PooledDataSource从源码角度来看实际是在UnpooledDataSource架子上做了一些扩展，在PooledDataSource维护了一个UnpooledDataSource实例，获取数据库连接的依然是UnpooledDataSource的那一套方法，不过既然要使用连接池自然不会如此简单，这就涉及到了PoolState和PooledConnection这两个类。</p>
-<h2 id="4-1-PoolState"><a href="#4-1-PoolState" class="headerlink" title="4.1. PoolState"></a>4.1. PoolState</h2><p>PoolState是连接池的状态上下文，内部维护了很多运行时的状态数据，其中只有两个参与了连接池的操作，(空闲连接队列)idleConnections和(活跃连接队列)activeConnections。</p>
-<h2 id="4-2-PooledConnection"><a href="#4-2-PooledConnection" class="headerlink" title="4.2. PooledConnection"></a>4.2. PooledConnection</h2><p>数据库连接的代理类，说到代理类，那自然就有invoke方法了：</p>
+<h3 id="PoolState"><a href="#PoolState" class="headerlink" title="PoolState"></a>PoolState</h3><p>PoolState是连接池的状态上下文，内部维护了很多运行时的状态数据，其中只有两个参与了连接池的操作，(空闲连接队列)idleConnections和(活跃连接队列)activeConnections。</p>
+<h3 id="PooledConnection"><a href="#PooledConnection" class="headerlink" title="PooledConnection"></a>PooledConnection</h3><p>数据库连接的代理类，说到代理类，那自然就有invoke方法了：</p>
 <pre><code>public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
     String methodName = method.getName();
     //当执行close方法时，不会真的关闭连接，会根据连接池的状态决定如何处理
@@ -920,7 +2106,7 @@ public Reflector(Class&lt;?&gt; clazz) {
     }
   }
 </code></pre><p>有上面源码可知，其实代理主要是为了处理close方法，毕竟连接池中的连接是需要重用的，不然岂不是和不用连接池一样了。</p>
-<h2 id="4-3-PooledDataSource"><a href="#4-3-PooledDataSource" class="headerlink" title="4.3. PooledDataSource"></a>4.3. PooledDataSource</h2><pre><code>//连接池状态上下文
+<h3 id="PooledDataSource"><a href="#PooledDataSource" class="headerlink" title="PooledDataSource"></a>PooledDataSource</h3><pre><code>//连接池状态上下文
 private final PoolState state = new PoolState(this);
 //实际获取数据库连接的数据源
 private final UnpooledDataSource dataSource;
@@ -984,7 +2170,7 @@ public void forceCloseAll() {
     log.debug(&quot;PooledDataSource forcefully closed/removed all connections.&quot;);
   }
 }
-</code></pre><p>通常情况下，当我们使用完一个连接时，会调用close方法释放连接，避免影响性能，连接池中的连接代理实例调用close方法时实际上不会简单的释放掉连接，而是调用pushConnection方法将连接放入空闲队列，等待下次调用。</p>
+</code></pre><p>　　通常情况下，当我们使用完一个连接时，会调用close方法释放连接，避免影响性能，连接池中的连接代理实例调用close方法时实际上不会简单的释放掉连接，而是调用pushConnection方法将连接放入空闲队列，等待下次调用。</p>
 <pre><code>  protected void pushConnection(PooledConnection conn) throws SQLException {
     synchronized (state) {
       //从活跃连接队列中清除
@@ -1033,9 +2219,9 @@ public void forceCloseAll() {
   }
 
 /**
-   * 获取连接
-   */
-  private PooledConnection popConnection(String username, String password) throws SQLException {
+ * 获取连接
+ */
+private PooledConnection popConnection(String username, String password) throws SQLException {
     boolean countedWait = false;
     PooledConnection conn = null;
     long t = System.currentTimeMillis();
@@ -1204,7 +2390,7 @@ public void forceCloseAll() {
     }
     return result;
   }
-</code></pre><h1 id="5-使用连接池有什么好处"><a href="#5-使用连接池有什么好处" class="headerlink" title="5. 使用连接池有什么好处"></a>5. 使用连接池有什么好处</h1><p>　　首先我们来看一下创建连接的性能消耗。</p>
+</code></pre><h2 id="使用连接池有什么好处"><a href="#使用连接池有什么好处" class="headerlink" title="使用连接池有什么好处"></a>使用连接池有什么好处</h2><p>　　首先我们来看一下创建连接的性能消耗。</p>
 <pre><code>try {
     Class.forName(&quot;com.mysql.jdbc.Driver&quot;);
     String url = &quot;jdbc:mysql://192.168.1.39:3306/dlb&quot;;
@@ -1222,10 +2408,9 @@ public void forceCloseAll() {
 } catch (SQLException e) {
     e.printStackTrace();
 }
-
-![](/images/mybatis_17.png)
-</code></pre><p>创建一个连接需要178ms，如果请求量上来了，那画面太美。恰巧还是一个“不谙世事”的程序员，天天追着老板买新服务器，估计老板砍死你的心都有了。笑<br>连接池中的连接在执行sql操作之后不会进行close，而是调用pushConnection进行调度，将连接在活跃和空闲队列中来回流转，等待执行任务，这样就节约了每次都要创建连接的开销。</p>
-<h1 id="6-何时创建Connection"><a href="#6-何时创建Connection" class="headerlink" title="6. 何时创建Connection"></a>6. 何时创建Connection</h1><p>　　当我们需要执行一个sql语句时，Executor会调用getConnection方法创建一个Connection。</p>
+</code></pre><p><img src="/images/mybatis_17.png" alt=""></p>
+<p>创建一个连接需要178ms，如果请求量上来了，那画面太美。恰巧还是一个“不谙世事”的程序员，天天追着老板买新服务器，估计老板砍死你的心都有了。笑<br>连接池中的连接在执行sql操作之后不会进行close，而是调用pushConnection进行调度，将连接在活跃和空闲队列中来回流转，等待执行任务，这样就节约了每次都要创建连接的开销。</p>
+<h2 id="何时创建Connection"><a href="#何时创建Connection" class="headerlink" title="何时创建Connection"></a>何时创建Connection</h2><p>　　当我们需要执行一个sql语句时，Executor会调用getConnection方法创建一个Connection。</p>
 <pre><code>protected Connection getConnection(Log statementLog) throws SQLException {
     Connection connection = transaction.getConnection();
     if (statementLog.isDebugEnabled()) {
@@ -1240,7 +2425,7 @@ public Connection getConnection() throws SQLException {
     }
     return connection;
   }
-</code></pre><h1 id="7-JNDI类型DataSource"><a href="#7-JNDI类型DataSource" class="headerlink" title="7. JNDI类型DataSource"></a>7. JNDI类型DataSource</h1><p>　　MyBatis定义了一个JndiDataSourceFactory来创建JDNI形式的数据源，具体配置参考各容器的文档。</p>
+</code></pre><h2 id="JNDI类型DataSource"><a href="#JNDI类型DataSource" class="headerlink" title="JNDI类型DataSource"></a>JNDI类型DataSource</h2><p>　　MyBatis定义了一个JndiDataSourceFactory来创建JDNI形式的数据源，具体配置参考各容器的文档。</p>
 ]]></content>
       
         
@@ -1256,10 +2441,10 @@ public Connection getConnection() throws SQLException {
       <title><![CDATA[MyBatis源码解析：Mybatis的缓存机制]]></title>
       <url>/2017/06/15/mybatis-8/</url>
       <content type="html"><![CDATA[<p>　　俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。</p>
-<h1 id="1-缓存的作用"><a href="#1-缓存的作用" class="headerlink" title="1. 缓存的作用"></a>1. 缓存的作用</h1><p>　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。<br><a id="more"></a></p>
-<h1 id="2-Cache"><a href="#2-Cache" class="headerlink" title="2. Cache"></a>2. Cache</h1><p>　　MyBatis的缓存基础是PerpetualCache，PerpetualCache实现了Cache接口，内部其实是维护了一个HashMap对象进行数据的缓存，下面看下Cache的家族树：<br><img src="/images/mybatis_9.png" alt=""></p>
+<h2 id="缓存的作用"><a href="#缓存的作用" class="headerlink" title="缓存的作用"></a>缓存的作用</h2><p>　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。<br><a id="more"></a></p>
+<h2 id="Cache"><a href="#Cache" class="headerlink" title="Cache"></a>Cache</h2><p>　　MyBatis的缓存基础是PerpetualCache，PerpetualCache实现了Cache接口，内部其实是维护了一个HashMap对象进行数据的缓存，下面看下Cache的家族树：<br><img src="/images/mybatis_9.png" alt=""></p>
 <p>乍一看哎呦喂，挺多实现类啊，其实这里使用了装饰者模式，其他的实现类都是装饰了PerpetualCache类。</p>
-<h1 id="3-一级缓存"><a href="#3-一级缓存" class="headerlink" title="3. 一级缓存"></a>3. 一级缓存</h1><p>　　MyBatis的一级缓存默认就是开启的（想关都关不掉），我们能做的就是设置一下他的生命周期，配置如下：</p>
+<h2 id="一级缓存"><a href="#一级缓存" class="headerlink" title="一级缓存"></a>一级缓存</h2><p>　　MyBatis的一级缓存默认就是开启的（想关都关不掉），我们能做的就是设置一下他的生命周期，配置如下：</p>
 <pre><code>&lt;settings&gt;
      &lt;setting name=&quot;localCacheScope&quot; value=&quot;SESSION|STATEMENT&quot; /&gt;
  &lt;/settings&gt;
@@ -1281,7 +2466,7 @@ if (list != null) {
      list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
 }
 </code></pre><p>　　正确的使用缓存确实能提高不少性能，但是这里就引出了一个新问题，如果我缓存的数据过期了怎么办？对于一些时效性不强的模块中有一些脏数据或许不会影响使用，但是对于要求数据时效性很强的系统中就不能这么玩了，所以MyBatis提供了手动配置刷新时机的方法。</p>
-<p>一共有五个触发方法会刷新一级缓存：</p>
+<p>一共有四个触发方法会刷新一级缓存：</p>
 <ul>
 <li>commit</li>
 <li>rollback</li>
@@ -1368,24 +2553,24 @@ if (list != null) {
     updateList.add(object);
   }
 </code></pre><p>　　说了这么多，那么一级缓存的性能如何呢？<br>　　从空间角度来看，一级缓存只是简单的使用的HashMap进行维护，并且没有对Has和Map的容量进行限制，这时候可能就有小伙伴会问了，这岂不是会占用很多内存吗，哪个渣渣写的代码，拖出去斩了=。=。MyBatis确实没在空间方面做硬性限制，但是呢在操作方式上其实还是有软限制的，一级缓存的生存周期是一个SqlSession会话，通常情况下每个request会新建一个SqlSession，一个request能执行多长时间（如果您的项目对SqlSession使用单例实现，请默默点击右上角的叉叉，笑），而且呢就算是这个SqlSession生活节奏比较慢，就是拖着不让回收也没问题，每次执行update操作的时候MyBatis会清空一次一级缓存，更极端点就算是这个死拖着不走的SqlSession全是查询操作，不还是可以手动清理缓存区的么（笑）。<br>从时间的角度看，MyBatis的一级缓存是粗粒度的，没有缓存过期的概念，也就是不会主动请求数据源对缓存进行更新，<br>由上面两点来看呢，一级缓存的一点不泛用性就展现出来了，对于数据变化的频率高，且对数据时效性要求高的业务来说就要控制每个SqlSession的生存时间了，时间越长缓存中的数据的准确性就越低了。</p>
-<h1 id="4-二级缓存"><a href="#4-二级缓存" class="headerlink" title="4. 二级缓存"></a>4. 二级缓存</h1><p>　　一级缓存是在一个SqlSession会话的周期内有效，那么不同的SqlSession想一起玩怎么办呢，这时候就用到了二级缓存。<br><img src="/images/mybatis_13.png" alt=""></p>
-<p>二级缓存简单来说就是在Configuration中维护的一个HashMap集合，MyBatis默认使用的和一级缓存一样是PerpetualCache这个实现（只不过使用TransactionalCache装饰了一下），与一级缓存不同，二级缓存是需要手动开启的，要使用二级缓存需要以下两个步骤：</p>
+<h2 id="二级缓存"><a href="#二级缓存" class="headerlink" title="二级缓存"></a>二级缓存</h2><p>　　一级缓存是在一个SqlSession会话的周期内有效，那么不同的SqlSession想一起玩怎么办呢，这时候就用到了二级缓存。<br><img src="/images/mybatis_13.png" alt=""></p>
+<p>　　二级缓存简单来说就是在Configuration中维护的一个HashMap集合，MyBatis默认使用的和一级缓存一样是PerpetualCache这个实现（只不过使用TransactionalCache装饰了一下），与一级缓存不同，二级缓存是需要手动开启的，要使用二级缓存需要以下两个步骤：</p>
 <ul>
-<li><p>配置config.xml：</p>
-  <setting name="cacheEnabled" value="true">
-</setting></li>
-<li><p>配置mapper.xml：</p>
-<p>  <cache></cache><cache-ref namespace="daoMapper.UserMapper"></cache-ref></p>
-</li>
+<li>配置config.xml：</li>
 </ul>
-<p>由上面可知，mapper有两种配置方式，其中cache标签是声明此mapper使用二级缓存，具体参数如下：</p>
+<pre><code>&lt;setting name=&quot;cacheEnabled&quot; value=&quot;true&quot;/&gt;
+</code></pre><ul>
+<li>配置mapper.xml：</li>
+</ul>
+<pre><code>&lt;cache&gt;&lt;/cache&gt;&lt;cache-ref namespace=&quot;daoMapper.UserMapper&quot;/&gt;
+</code></pre><p>由上面可知，mapper有两种配置方式，其中cache标签是声明此mapper使用二级缓存，具体参数如下：</p>
 <ul>
 <li>eviction：缓存刷新机制，默认可用的回收策略有四种，LRU（清理最近最少使用的缓存）、FIFO（先进先出）、SOFT（ 软引用:移除基于垃圾回收器状态和软引用规则的对象）和WEAK（更积极地移除基于垃圾收集器状态和弱引用规则的对象。）</li>
 <li>flushInterval：刷新间隔，可以被设置为任意的正整数,而且它们代表一个合理的毫秒 形式的时间段。默认情况是不设置,也就是没有刷新间隔,缓存仅仅调用语句时刷新。</li>
 <li>size：引用数目，可以被设置为任意正整数,要记住你缓存的对象数目和你运行环境的 可用内存资源数目。默认值是 1024。</li>
 <li>readOnly：只读属性，可以被设置为 true 或 false。只读的缓存会给所有调用者返回缓 存对象的相同实例。因此这些对象不能被修改。这提供了很重要的性能优势。可读写的缓存 会返回缓存对象的拷贝(通过序列化) 。这会慢一些,但是安全,因此默认是 false。</li>
 </ul>
-<p>一级缓存是在BaseExecutor中进行操作，那二级缓存想要在一级之前调用自然就要在上一级了，MyBatis采用的是装饰器模式，当cacheEnabled设置为true时，默认创建的Executor实例都会用cacheEnabled进行装饰，下面看下cacheEnabled的查询源码：</p>
+<p>　　一级缓存是在BaseExecutor中进行操作，那二级缓存想要在一级之前调用自然就要在上一级了，MyBatis采用的是装饰器模式，当cacheEnabled设置为true时，默认创建的Executor实例都会用cacheEnabled进行装饰，下面看下cacheEnabled的查询源码：</p>
 <pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
      throws SQLException {
    Cache cache = ms.getCache();
@@ -1409,7 +2594,7 @@ if (list != null) {
    //如果MappedStatement配置不使用缓存则直接调用delegate进行查询
    return delegate.&lt;E&gt; query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
  }
-</code></pre><p>这里的List<e> list = (List<e>) tcm.getObject(cache, key);是重点，画一下，考试要考，咳咳。<br>此处可以看出cache其实是从MappedStatement中取出的，正是因为MappedStatement在MyBatis初始化时就全部创建完毕，所以不会和SqlSession的生命周期挂钩。下面看下之后的方法：</e></e></p>
+</code></pre><p>这里的List<e> list = (List<e>) tcm.getObject(cache, key);是重点，画一下，考试要考，咳咳。<br>　　此处可以看出cache其实是从MappedStatement中取出的，正是因为MappedStatement在MyBatis初始化时就全部创建完毕，所以不会和SqlSession的生命周期挂钩。下面看下之后的方法：</e></e></p>
 <pre><code>public Object getObject(Cache cache, CacheKey key) {
     return getTransactionalCache(cache).getObject(key);
   }
@@ -1436,7 +2621,7 @@ private TransactionalCache getTransactionalCache(Cache cache) {
       return object;
     }
   }
-</code></pre><p>上面说了二级缓存是从MappedStatement取出的，那么现在就来找一下二级缓存是如何创建的，之前讲创建SqlSessionFactory的过程时有提到过解析xml配置文件的方法，既然二级缓存的开关是在mapper.xml文件中，那么创建二级缓存的入口自然要落在解析mapper的方法中，下面来看下源码：</p>
+</code></pre><p>　　上面说了二级缓存是从MappedStatement取出的，那么现在就来找一下二级缓存是如何创建的，之前讲创建SqlSessionFactory的过程时有提到过解析xml配置文件的方法，既然二级缓存的开关是在mapper.xml文件中，那么创建二级缓存的入口自然要落在解析mapper的方法中，下面来看下源码：</p>
 <pre><code>private void cacheElement(XNode context) throws Exception {
     if (context != null) {
       //自定义缓存类型
@@ -1573,11 +2758,12 @@ public Cache build() {
     <entry>
       <title><![CDATA[MyBatis源码解析：ResultSetHandler]]></title>
       <url>/2017/06/15/mybatis-6/</url>
-      <content type="html"><![CDATA[<p>　　现在要说第三个苦力ResultSetHandler（负责处理结果集映射）了，还记得在mapper配置中有一个标签叫resultMap，还有一个叫resultType，这两个标签就是这个时候用的了。<br>　　ResultSetHandler接口只有一个默认的实现类，下面我们来看看关键的几个方法：<br><a id="more"></a><br>    /**</p>
-<pre><code>   * 依照配置的返回类型映射查询结果集
-   */
-  @Override
-  public List&lt;Object&gt; handleResultSets(Statement stmt) throws SQLException {
+      <content type="html"><![CDATA[<p>　　现在要说第三个苦力ResultSetHandler（负责处理结果集映射）了，还记得在mapper配置中有一个标签叫resultMap，还有一个叫resultType，这两个标签就是这个时候用的了。ResultSetHandler接口只有一个默认的实现类，下面我们来看看关键的几个方法：<br><a id="more"></a></p>
+<pre><code>/**
+ * 依照配置的返回类型映射查询结果集
+ */
+ @Override
+ public List&lt;Object&gt; handleResultSets(Statement stmt) throws SQLException {
     ErrorContext.instance().activity(&quot;handling results&quot;).object(mappedStatement.getId());
 
     final List&lt;Object&gt; multipleResults = new ArrayList&lt;Object&gt;();
@@ -1628,9 +2814,9 @@ public Cache build() {
   }
 
 /**
-   * 按照规则映射结果集数据
-   */
-  private void handleResultSet(ResultSetWrapper rsw, ResultMap resultMap, List&lt;Object&gt; multipleResults, ResultMapping parentMapping) throws SQLException {
+ * 按照规则映射结果集数据
+ */
+private void handleResultSet(ResultSetWrapper rsw, ResultMap resultMap, List&lt;Object&gt; multipleResults, ResultMapping parentMapping) throws SQLException {
     try {
       //parentMapping不为空是指嵌套结果集，在mapper配置中的resultMap标签控制
       if (parentMapping != null) {
@@ -1653,9 +2839,9 @@ public Cache build() {
     }
   }
 /**
-   * 映射数据
-   */
-  public void handleRowValues(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
+ * 映射数据
+ */
+public void handleRowValues(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
     if (resultMap.hasNestedResultMaps()) {
       ensureNoRowBounds();
       checkResultHandler();
@@ -1667,9 +2853,9 @@ public Cache build() {
     }
   }
 /**
-  * 映射嵌套结果集
-  */
-  private void handleRowValuesForNestedResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
+ * 映射嵌套结果集
+ */
+private void handleRowValuesForNestedResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping) throws SQLException {
     //创建结果集上下文对象
     final DefaultResultContext&lt;Object&gt; resultContext = new DefaultResultContext&lt;Object&gt;();
     //跳过rowBounds指定offset行偏移量
@@ -1707,9 +2893,9 @@ public Cache build() {
     }
   }
 /**
-   * 简单结果集的绑定行数据方法
-   */
-  private void handleRowValuesForSimpleResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping)
+ * 简单结果集的绑定行数据方法
+ */
+private void handleRowValuesForSimpleResultMap(ResultSetWrapper rsw, ResultMap resultMap, ResultHandler&lt;?&gt; resultHandler, RowBounds rowBounds, ResultMapping parentMapping)
       throws SQLException {
     DefaultResultContext&lt;Object&gt; resultContext = new DefaultResultContext&lt;Object&gt;();
     //跳过rowBounds指定offset行偏移量
@@ -1745,7 +2931,7 @@ public Cache build() {
 <a id="more"></a>
 <p>本次先说说StatementHandler这个苦力。下团是StatementHandler的家族体系：<br><img src="/images/mybatis_8.png" alt=""></p>
 <p>　　可以看出StatementHandler和他的带头大哥一样是使用的模板模式，下面就先看下这个模板类BaseStatementHandler。</p>
-<h1 id="1-BaseStatementHandler"><a href="#1-BaseStatementHandler" class="headerlink" title="1. BaseStatementHandler"></a>1. BaseStatementHandler</h1><p>　　BaseStatementHandler需要关注的方法只有一个，下面来看下源码：</p>
+<h2 id="BaseStatementHandler"><a href="#BaseStatementHandler" class="headerlink" title="BaseStatementHandler"></a>BaseStatementHandler</h2><p>　　BaseStatementHandler需要关注的方法只有一个，下面来看下源码：</p>
 <pre><code>public Statement prepare(Connection connection, Integer transactionTimeout) throws SQLException {
     ErrorContext.instance().sql(boundSql.getSql());
     Statement statement = null;
@@ -1765,7 +2951,7 @@ public Cache build() {
       throw new ExecutorException(&quot;Error preparing statement.  Cause: &quot; + e, e);
     }
   }
-</code></pre><h1 id="2-SimpleStatementHandler"><a href="#2-SimpleStatementHandler" class="headerlink" title="2. SimpleStatementHandler"></a>2. SimpleStatementHandler</h1><p>　　一看名字就知道了，这是执行简单sql小分队的苦力，正好用来举例，先来看看CRUD方法：</p>
+</code></pre><h2 id="SimpleStatementHandler"><a href="#SimpleStatementHandler" class="headerlink" title="SimpleStatementHandler"></a>SimpleStatementHandler</h2><p>　　一看名字就知道了，这是执行简单sql小分队的苦力，正好用来举例，先来看看CRUD方法：</p>
 <pre><code>public int update(Statement statement) throws SQLException {
     //获取sql
     String sql = boundSql.getSql();
@@ -1815,15 +3001,15 @@ public &lt;E&gt; Cursor&lt;E&gt; queryCursor(Statement statement) throws SQLExce
   }
   protected Statement instantiateStatement(Connection connection) throws SQLException {
     if (mappedStatement.getResultSetType() != null) {
-//创建能返回指定类型的ResultSet的Statement实例
+      //创建能返回指定类型的ResultSet的Statement实例
       return connection.createStatement(mappedStatement.getResultSetType().getValue(), ResultSet.CONCUR_READ_ONLY);
     } else {
-//创建普通Statement实例
+      //创建普通Statement实例
       return connection.createStatement();
     }
   }
 </code></pre><p>simple不愧simple之名，除了update稍微复杂点都很简单，需要注意的是SimpleStatementHandler中的parameterize方法是没有实现的，即不支持绑定参数。</p>
-<h1 id="3-PreparedStatementHandler"><a href="#3-PreparedStatementHandler" class="headerlink" title="3. PreparedStatementHandler"></a>3. PreparedStatementHandler</h1><p>　　这个是预编译小组的小伙伴，这个小伙伴和simple挺像，甚至update比simple还要简单，真不知道到底他俩谁才更像simple（笑），不过说归说这次的是有很大不同的，下面看下源码：</p>
+<h2 id="PreparedStatementHandler"><a href="#PreparedStatementHandler" class="headerlink" title="PreparedStatementHandler"></a>PreparedStatementHandler</h2><p>　　这个是预编译小组的小伙伴，这个小伙伴和simple挺像，甚至update比simple还要简单，真不知道到底他俩谁才更像simple（笑），不过说归说这次的是有很大不同的，下面看下源码：</p>
 <pre><code>protected Statement instantiateStatement(Connection connection) throws SQLException {
     //获取sql
     String sql = boundSql.getSql();
@@ -1862,7 +3048,7 @@ public int update(Statement statement) throws SQLException {
 public void parameterize(Statement statement) throws SQLException {
     parameterHandler.setParameters((PreparedStatement) statement);
   }
-</code></pre><h1 id="4-CallableStatementHandler"><a href="#4-CallableStatementHandler" class="headerlink" title="4. CallableStatementHandler"></a>4. CallableStatementHandler</h1><p>　　顾名思义这个就是处理存储过程的小伙伴了，他的修改. 查询方法与上面两位几乎相同就不在赘述了，下面看下不一样的地方：</p>
+</code></pre><h2 id="CallableStatementHandler"><a href="#CallableStatementHandler" class="headerlink" title="CallableStatementHandler"></a>CallableStatementHandler</h2><p>　　顾名思义这个就是处理存储过程的小伙伴了，他的修改. 查询方法与上面两位几乎相同就不在赘述了，下面看下不一样的地方：</p>
 <pre><code>protected Statement instantiateStatement(Connection connection) throws SQLException {
     String sql = boundSql.getSql();
     if (mappedStatement.getResultSetType() != null) {
@@ -1907,7 +3093,7 @@ public void parameterize(Statement statement) throws SQLException {
       }
     }
   }
-</code></pre><h1 id="5-RoutingStatementHandler"><a href="#5-RoutingStatementHandler" class="headerlink" title="5. RoutingStatementHandler"></a>5. RoutingStatementHandler</h1><p>　　MyBatis中默认实现的StatementHandler就是RoutingStatementHandler，RoutingStatementHandler并没有实现具体的业务逻辑，而是作为一个选择器的角色存在，通过配置中的设置决定实例化哪种子类</p>
+</code></pre><h2 id="RoutingStatementHandler"><a href="#RoutingStatementHandler" class="headerlink" title="RoutingStatementHandler"></a>RoutingStatementHandler</h2><p>　　MyBatis中默认实现的StatementHandler就是RoutingStatementHandler，RoutingStatementHandler并没有实现具体的业务逻辑，而是作为一个选择器的角色存在，通过配置中的设置决定实例化哪种子类</p>
 <pre><code>public RoutingStatementHandler(Executor executor, MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
    switch (ms.getStatementType()) {
      case STATEMENT:
@@ -1938,11 +3124,21 @@ public void parameterize(Statement statement) throws SQLException {
       <title><![CDATA[MyBatis源码解析：Executor]]></title>
       <url>/2017/06/15/mybatis-4/</url>
       <content type="html"><![CDATA[<p>　　前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：<br><img src="/images/mybatis_7.png" alt=""><br><a id="more"></a></p>
-<h1 id="1-BaseExecutor"><a href="#1-BaseExecutor" class="headerlink" title="1. BaseExecutor"></a>1. BaseExecutor</h1><p>　　BaseExecutor实现了Executor接口的所有方法，采用了模板模式，为下面几个子类提供公共实现。首先看下update方法的源码：</p>
-<p> public int update(MappedStatement ms, Object parameter) throws SQLException {<br>    ErrorContext.instance().resource(ms.getResource()).activity(“executing an update”).object(ms.getId());<br>    //如果已经关闭则抛出异常<br>    if (closed) {<br>      throw new ExecutorException(“Executor was closed.”);<br>    }<br>    //执行更新操作会清空一级缓存<br>    clearLocalCache();<br>    //由子类做差异化实现<br>    return doUpdate(ms, parameter);<br>  }</p>
-<p>由上可见，update的模板方法比较简单，只是清空了以及缓存，外加关闭异常，具体的操作由子类的doUpdate实现决定。下面看下query方法的源码：</p>
+<h2 id="BaseExecutor"><a href="#BaseExecutor" class="headerlink" title="BaseExecutor"></a>BaseExecutor</h2><p>　　BaseExecutor实现了Executor接口的所有方法，采用了模板模式，为下面几个子类提供公共实现。首先看下update方法的源码：</p>
+<pre><code>public int update(MappedStatement ms, Object parameter) throws SQLException {
+    ErrorContext.instance().resource(ms.getResource()).activity(&quot;executing an update&quot;).object(ms.getId());
+    //如果已经关闭则抛出异常
+    if (closed) {
+      throw new ExecutorException(&quot;Executor was closed.&quot;);
+    }
+    //执行更新操作会清空一级缓存
+    clearLocalCache();
+    //由子类做差异化实现
+    return doUpdate(ms, parameter);
+  }
+</code></pre><p>由上可见，update的模板方法比较简单，只是清空了以及缓存，外加关闭异常，具体的操作由子类的doUpdate实现决定。下面看下query方法的源码：</p>
 <pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
-   //获取sql对象
+  //获取sql对象
   BoundSql boundSql = ms.getBoundSql(parameter);
   //获取缓存key
    CacheKey key = createCacheKey(ms, parameter, rowBounds, boundSql);
@@ -2012,7 +3208,7 @@ private &lt;E&gt; List&lt;E&gt; queryFromDatabase(MappedStatement ms, Object par
     return doQueryCursor(ms, parameter, rowBounds, boundSql);
   }
 </code></pre><p>cursor是3.4版本新增的特性，用于以游标的方式返回结果，主要用于数据量很大的业务场景，会分批次读取数据，降低每次对数据库的占用时间。</p>
-<h1 id="2-SimpleExecutor"><a href="#2-SimpleExecutor" class="headerlink" title="2. SimpleExecutor"></a>2. SimpleExecutor</h1><p>　　简单sql执行器，不支持添加参数。这里用doQuery方法进行示例：</p>
+<h2 id="SimpleExecutor"><a href="#SimpleExecutor" class="headerlink" title="SimpleExecutor"></a>SimpleExecutor</h2><p>　　简单sql执行器，不支持添加参数。这里用doQuery方法进行示例：</p>
 <pre><code>  public &lt;E&gt; List&lt;E&gt; doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
     Statement stmt = null;
     try {
@@ -2038,7 +3234,7 @@ private Statement prepareStatement(StatementHandler handler, Log statementLog) t
     handler.parameterize(stmt);
     return stmt;
   }
-</code></pre><h1 id="3-ReuseExecutor"><a href="#3-ReuseExecutor" class="headerlink" title="3. ReuseExecutor"></a>3. ReuseExecutor</h1><p>　　可重复使用执行器，内部维护了一个Map<string, statement="">缓存池，在一个session生命周期内相同的statement只会实例化一次。与simple的主要差异在于下面两个方法</string,></p>
+</code></pre><h2 id="ReuseExecutor"><a href="#ReuseExecutor" class="headerlink" title="ReuseExecutor"></a>ReuseExecutor</h2><p>　　可重复使用执行器，内部维护了一个Map<string, statement="">缓存池，在一个session生命周期内相同的statement只会实例化一次。与simple的主要差异在于下面两个方法</string,></p>
 <pre><code>public List&lt;BatchResult&gt; doFlushStatements(boolean isRollback) throws SQLException {
     //遍历statement缓存池，依次关闭
     for (Statement stmt : statementMap.values()) {
@@ -2070,7 +3266,7 @@ private Statement prepareStatement(StatementHandler handler, Log statementLog) t
     handler.parameterize(stmt);
     return stmt;
   }
-</code></pre><h1 id="4-BatchExecutor"><a href="#4-BatchExecutor" class="headerlink" title="4. BatchExecutor"></a>4. BatchExecutor</h1><p>批处理执行器，BatchExecutor内维护了四个变量，分别是</p>
+</code></pre><h2 id="BatchExecutor"><a href="#BatchExecutor" class="headerlink" title="BatchExecutor"></a>BatchExecutor</h2><p>批处理执行器，BatchExecutor内维护了四个变量，分别是</p>
 <ul>
 <li>statementList：statement执行队列</li>
 <li>batchResultList：结果集队列</li>
@@ -2173,11 +3369,11 @@ public List&lt;BatchResult&gt; doFlushStatements(boolean isRollback) throws SQLE
       batchResultList.clear();
     }
   }
-</code></pre><h1 id="5-CachingExecutor"><a href="#5-CachingExecutor" class="headerlink" title="5. CachingExecutor"></a>5. CachingExecutor</h1><p>　　缓存执行器，顾名思义这种执行器内部必定维护了一个缓存区，也主要针对于查询语句，具体代码如下：</p>
-<pre><code> //实际的操作执行器
-  private Executor delegate;
-  //缓存容器，缓存实体TransactionalCache实现了Cache接口
-  private TransactionalCacheManager tcm = new TransactionalCacheManager();
+</code></pre><h2 id="CachingExecutor"><a href="#CachingExecutor" class="headerlink" title="CachingExecutor"></a>CachingExecutor</h2><p>　　缓存执行器，顾名思义这种执行器内部必定维护了一个缓存区，也主要针对于查询语句，具体代码如下：</p>
+<pre><code>//实际的操作执行器
+private Executor delegate;
+//缓存容器，缓存实体TransactionalCache实现了Cache接口
+private TransactionalCacheManager tcm = new TransactionalCacheManager();
 public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
       throws SQLException {
     Cache cache = ms.getCache();
@@ -2453,19 +3649,19 @@ public &lt;T&gt; T getMapper(Class&lt;T&gt; type, SqlSession sqlSession) {
     <entry>
       <title><![CDATA[MyBatis架构设计总结]]></title>
       <url>/2017/06/14/mybatis/</url>
-      <content type="html"><![CDATA[<h1 id="一-MyBatis的架构"><a href="#一-MyBatis的架构" class="headerlink" title="一. MyBatis的架构"></a>一. MyBatis的架构</h1><p><img src="/images/mybatis_1.png" alt=""></p>
+      <content type="html"><![CDATA[<h2 id="MyBatis的架构"><a href="#MyBatis的架构" class="headerlink" title="MyBatis的架构"></a>MyBatis的架构</h2><p><img src="/images/mybatis_1.png" alt=""></p>
 <a id="more"></a>
-<h2 id="1-接口层"><a href="#1-接口层" class="headerlink" title="1.接口层"></a>1.接口层</h2><p>接口层提供了与数据库交互的入口，MyBatis支持两种方式的接口调用</p>
+<h3 id="接口层"><a href="#接口层" class="headerlink" title="接口层"></a>接口层</h3><p>接口层提供了与数据库交互的入口，MyBatis支持两种方式的接口调用</p>
 <ul>
 <li>传统API方式</li>
 <li>mapper接口方式</li>
 </ul>
-<h3 id="1-1-传统API"><a href="#1-1-传统API" class="headerlink" title="1.1. 传统API"></a>1.1. 传统API</h3><p><img src="/images/mybatis_2.png" alt=""><br>　　例：int i = session.selectOne(“daoMapper.UserMapper.selectIDByUser”, u);<br>　　传统API的方式虽然很简洁，但是并不方便，不仅要根据sql类型手动选择调用的方法，而且StatementID使用字符串形式的拼写也加大了人为错误的因素，并不符合框架避免人为错误的这一个特点。</p>
-<h2 id="1-2-Mapper接口"><a href="#1-2-Mapper接口" class="headerlink" title="1.2. Mapper接口"></a>1.2. Mapper接口</h2><p>　　MyBatis支持两种Mapper接口的实现形式一种是java注解，一种是xml配置。</p>
-<h3 id="1-2-1-注解"><a href="#1-2-1-注解" class="headerlink" title="1.2.1. 注解"></a>1.2.1. 注解</h3><pre><code>@Select(&quot;select id from users where phoneNO = #{phoneNO}&quot;)
+<h4 id="传统API"><a href="#传统API" class="headerlink" title="传统API"></a>传统API</h4><p><img src="/images/mybatis_2.png" alt=""><br>　　例：int i = session.selectOne(“daoMapper.UserMapper.selectIDByUser”, u);<br>　　传统API的方式虽然很简洁，但是并不方便，不仅要根据sql类型手动选择调用的方法，而且StatementID使用字符串形式的拼写也加大了人为错误的因素，并不符合框架避免人为错误的这一个特点。</p>
+<h3 id="Mapper接口"><a href="#Mapper接口" class="headerlink" title="Mapper接口"></a>Mapper接口</h3><p>　　MyBatis支持两种Mapper接口的实现形式一种是java注解，一种是xml配置。</p>
+<h4 id="注解"><a href="#注解" class="headerlink" title="注解"></a>注解</h4><pre><code>@Select(&quot;select id from users where phoneNO = #{phoneNO}&quot;)
 public int selectID(String phoneNO);
 </code></pre><p>注解形式开发比较简单，但是不适合比较复杂的sql。</p>
-<h3 id="1-2-2-xml配置"><a href="#1-2-2-xml配置" class="headerlink" title="1.2.2. xml配置"></a>1.2.2. xml配置</h3><pre><code>mapper.java:
+<h4 id="xml配置"><a href="#xml配置" class="headerlink" title="xml配置"></a>xml配置</h4><pre><code>mapper.java:
 public User selectUser(Integer id);
 
 mapper.xml:
@@ -2479,9 +3675,9 @@ mapper.xml:
 <li>数据库操作</li>
 <li>处理结果集</li>
 </ul>
-<h3 id="2-1-处理参数生成动态SQL"><a href="#2-1-处理参数生成动态SQL" class="headerlink" title="2.1. 处理参数生成动态SQL"></a>2.1. 处理参数生成动态SQL</h3><p>　　动态生成SQL是一个很优雅的设计，MyBatis通过请求传入的参数对象和Ognl表达式来动态生成需要执行的sql语句，这使得设计sql的时候有很强的灵活性和扩展性。处理参数这部分主要分为两步，首先是查询的时候通过preparedStatement将参数对象与jdbc类型进行映射，其次是查询出结果集时，通过resultSet将查询结果与java类型进行映射。</p>
-<h3 id="2-2-数据库操作"><a href="#2-2-数据库操作" class="headerlink" title="2.2. 数据库操作"></a>2.2. 数据库操作</h3><p>　　MyBatis底层与数据库的交互依然是使用的JDBC实现，主要通过Executor这个执行者协调各个模块完成请求操作。</p>
-<h3 id="2-3-处理结果集"><a href="#2-3-处理结果集" class="headerlink" title="2.3. 处理结果集"></a>2.3. 处理结果集</h3><p>　　MyBatis会将数据库返回的结果映射为List<e>的形式，这里要提到ResultMap，这个标签的功能很强大，可以完成多层多类型嵌套，支持多对一或一对多的数据形式。下面是一个例子：</e></p>
+<h4 id="处理参数生成动态SQL"><a href="#处理参数生成动态SQL" class="headerlink" title="处理参数生成动态SQL"></a>处理参数生成动态SQL</h4><p>　　动态生成SQL是一个很优雅的设计，MyBatis通过请求传入的参数对象和Ognl表达式来动态生成需要执行的sql语句，这使得设计sql的时候有很强的灵活性和扩展性。处理参数这部分主要分为两步，首先是查询的时候通过preparedStatement将参数对象与jdbc类型进行映射，其次是查询出结果集时，通过resultSet将查询结果与java类型进行映射。</p>
+<h4 id="数据库操作"><a href="#数据库操作" class="headerlink" title="数据库操作"></a>数据库操作</h4><p>　　MyBatis底层与数据库的交互依然是使用的JDBC实现，主要通过Executor这个执行者协调各个模块完成请求操作。</p>
+<h4 id="处理结果集"><a href="#处理结果集" class="headerlink" title="处理结果集"></a>处理结果集</h4><p>　　MyBatis会将数据库返回的结果映射为List<e>的形式，这里要提到ResultMap，这个标签的功能很强大，可以完成多层多类型嵌套，支持多对一或一对多的数据形式。下面是一个例子：</e></p>
 <pre><code>&lt;resultMap type=&quot;com.ymt.config.protectplan.domain.dto.ProtectplanDto&quot; id=&quot;protectplanDetail&quot;&gt;
     &lt;id property=&quot;id&quot; column=&quot;protectPlanID&quot;/&gt;
     &lt;result property=&quot;protectPlanName&quot; column=&quot;protectPlanName&quot;/&gt;
@@ -2512,14 +3708,14 @@ mapper.xml:
         &lt;/collection&gt;    
     &lt;/collection&gt;
 &lt;/resultMap&gt;        
-</code></pre><h2 id="3-支撑服务层"><a href="#3-支撑服务层" class="headerlink" title="3. 支撑服务层"></a>3. 支撑服务层</h2><p>　　支撑服务层主要为数据处理层提供额外功能。</p>
-<h3 id="3-1-元对象模块"><a href="#3-1-元对象模块" class="headerlink" title="3.1. 元对象模块"></a>3.1. 元对象模块</h3><p>　　元对象是MyBatis的一个独立的模块，提供了一种简洁而优雅的访问对象的方式，使得开发时只需要专注于具体的业务，而不需要关注反射细节，并且无需手动处理各种反射异常。其具体实现是依赖与java的反射机制，所以嘛性能是有点损耗的，不过比起方便程度来说也是可以接受的。（不依赖其他模块，可以单独提出使用）</p>
-<h3 id="3-2-缓存机制"><a href="#3-2-缓存机制" class="headerlink" title="3.2. 缓存机制"></a>3.2. 缓存机制</h3><p>　　在越来越高的并发量的冲击下，不论是服务器还是数据库的压力都越来越大，缓存机制就是缓解数据库这方面的访问压力的。MyBatis设置了两个缓存层级，一级缓存存在于一次SqlSession会话内，一次会话可以不必重复查询相同的数据，二级缓存可以跨SqlSession存在，但是有很大风险。总之，使用MyBatis的缓存要谨慎，不然反而会影响程序的时效性。</p>
-<h3 id="3-3-拦截器机制"><a href="#3-3-拦截器机制" class="headerlink" title="3.3. 拦截器机制"></a>3.3. 拦截器机制</h3><p>　　拦截器是MyBatis提供的一种可以改变自身运行机制的方式，拦截器仅支持拦截Executor. StatementHandler. ResultSetHandler. ParameterHandler。可以对MyBatis做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。</p>
-<h3 id="3-4-事务管理"><a href="#3-4-事务管理" class="headerlink" title="3.4. 事务管理"></a>3.4. 事务管理</h3><p>　　事务管理是ORM框架的一个必不可少的部分。</p>
-<h3 id="3-5-连接池机制"><a href="#3-5-连接池机制" class="headerlink" title="3.5. 连接池机制"></a>3.5. 连接池机制</h3><p>　　创建数据库连接占据了一次会话的大部分时间，所以在访问量大的系统中，连接池就至关重要，连接池维护了所有数据库会话，节省了每次创建连接的性能开销。</p>
-<h3 id="3-6-Sql的配置方式"><a href="#3-6-Sql的配置方式" class="headerlink" title="3.6. Sql的配置方式"></a>3.6. Sql的配置方式</h3><p>　　MyBatis的传统配置方式是基于xml配置，但是面向接口编程之风越来越盛，而且xml配置也很繁琐，并不适合简单sql，所以就诞生了一种符合面向接口编程思想的方式，而接口调用就引申出了注解这个大杀器，从此以后就可以使用mapper接口+注解的方式来配置sql，但是需要注意的是MyBatis对注解的支持还很简单，很多复杂的功能还是要用xml配置的。</p>
-<h1 id="二-MyBatis的主要模块"><a href="#二-MyBatis的主要模块" class="headerlink" title="二. MyBatis的主要模块"></a>二. MyBatis的主要模块</h1><ul>
+</code></pre><h3 id="支撑服务层"><a href="#支撑服务层" class="headerlink" title="支撑服务层"></a>支撑服务层</h3><p>　　支撑服务层主要为数据处理层提供额外功能。</p>
+<h4 id="元对象模块"><a href="#元对象模块" class="headerlink" title="元对象模块"></a>元对象模块</h4><p>　　元对象是MyBatis的一个独立的模块，提供了一种简洁而优雅的访问对象的方式，使得开发时只需要专注于具体的业务，而不需要关注反射细节，并且无需手动处理各种反射异常。其具体实现是依赖与java的反射机制，所以嘛性能是有点损耗的，不过比起方便程度来说也是可以接受的。（不依赖其他模块，可以单独提出使用）</p>
+<h4 id="缓存机制"><a href="#缓存机制" class="headerlink" title="缓存机制"></a>缓存机制</h4><p>　　在越来越高的并发量的冲击下，不论是服务器还是数据库的压力都越来越大，缓存机制就是缓解数据库这方面的访问压力的。MyBatis设置了两个缓存层级，一级缓存存在于一次SqlSession会话内，一次会话可以不必重复查询相同的数据，二级缓存可以跨SqlSession存在，但是有很大风险。总之，使用MyBatis的缓存要谨慎，不然反而会影响程序的时效性。</p>
+<h4 id="拦截器机制"><a href="#拦截器机制" class="headerlink" title="拦截器机制"></a>拦截器机制</h4><p>　　拦截器是MyBatis提供的一种可以改变自身运行机制的方式，拦截器仅支持拦截Executor. StatementHandler. ResultSetHandler. ParameterHandler。可以对MyBatis做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。</p>
+<h4 id="事务管理"><a href="#事务管理" class="headerlink" title="事务管理"></a>事务管理</h4><p>　　事务管理是ORM框架的一个必不可少的部分。</p>
+<h4 id="连接池机制"><a href="#连接池机制" class="headerlink" title="连接池机制"></a>连接池机制</h4><p>　　创建数据库连接占据了一次会话的大部分时间，所以在访问量大的系统中，连接池就至关重要，连接池维护了所有数据库会话，节省了每次创建连接的性能开销。</p>
+<h4 id="Sql的配置方式"><a href="#Sql的配置方式" class="headerlink" title="Sql的配置方式"></a>Sql的配置方式</h4><p>　　MyBatis的传统配置方式是基于xml配置，但是面向接口编程之风越来越盛，而且xml配置也很繁琐，并不适合简单sql，所以就诞生了一种符合面向接口编程思想的方式，而接口调用就引申出了注解这个大杀器，从此以后就可以使用mapper接口+注解的方式来配置sql，但是需要注意的是MyBatis对注解的支持还很简单，很多复杂的功能还是要用xml配置的。</p>
+<h2 id="MyBatis的主要模块"><a href="#MyBatis的主要模块" class="headerlink" title="MyBatis的主要模块"></a>MyBatis的主要模块</h2><ul>
 <li>SqlSession：数据库会话模块，MyBatis的顶层API，程序的调用入口。</li>
 <li>Configuration：运行环境上下文，维护了MyBatis的所有配置信息，以及各种缓存区。</li>
 <li>Executor：MyBatis的执行器，负责调度数据库操作的整个流程，完成各种缓存相关操作。</li>
@@ -2534,12 +3730,12 @@ mapper.xml:
 <li>MetaObject：元对象模块，简洁而优雅的反射工具。</li>
 </ul>
 <p>(MyBatis只有这几个模块吗？当然不是，那为什么只写这几个是重点呢？这个嘛，当然是我只看了这几个模块的源码了=。=)<br><img src="/images/mybatis_3.png" alt=""></p>
-<h1 id="三-MyBatis执行流程"><a href="#三-MyBatis执行流程" class="headerlink" title="三. MyBatis执行流程"></a>三. MyBatis执行流程</h1><p>此处由MyBatis的查询操作举例</p>
-<h2 id="1-开启SqlSession"><a href="#1-开启SqlSession" class="headerlink" title="1. 开启SqlSession"></a>1. 开启SqlSession</h2><pre><code>InputStream is = Resources.getResourceAsStream(&quot;mybatis-config.xml&quot;);
+<h2 id="MyBatis执行流程"><a href="#MyBatis执行流程" class="headerlink" title="MyBatis执行流程"></a>MyBatis执行流程</h2><p>此处由MyBatis的查询操作举例</p>
+<h3 id="开启SqlSession"><a href="#开启SqlSession" class="headerlink" title="开启SqlSession"></a>开启SqlSession</h3><pre><code>InputStream is = Resources.getResourceAsStream(&quot;mybatis-config.xml&quot;);
 SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(is,&quot;development1&quot;);
 SqlSession session = sqlSessionFactory.openSession();
 MyBatis的数据库会话封装在SqlSession中，SqlSession作为顶层API，肩负着增删改查的调度任务。
-</code></pre><h2 id="2-SqlSession的查询"><a href="#2-SqlSession的查询" class="headerlink" title="2. SqlSession的查询"></a>2. SqlSession的查询</h2><pre><code>public &lt;E&gt; List&lt;E&gt; selectList(String statement, Object parameter, RowBounds rowBounds) {
+</code></pre><h3 id="SqlSession的查询"><a href="#SqlSession的查询" class="headerlink" title="SqlSession的查询"></a>SqlSession的查询</h3><pre><code>public &lt;E&gt; List&lt;E&gt; selectList(String statement, Object parameter, RowBounds rowBounds) {
     try {
       //在configuration中维护了一个Map&lt;String, MappedStatement&gt;集合，在初始化的时候会读取所有sql配置文件中的信息，
       //每个sql会生成一个对应的上下文MappedStatement，缓存在这个集合中。
@@ -2553,7 +3749,7 @@ MyBatis的数据库会话封装在SqlSession中，SqlSession作为顶层API，�
     }
   }
 </code></pre><p>　　在MyBatis初始化时，会根据加载的配置文件创建Configuration实例，mapper配置文件中的sql会生成对应的MappedStatement实例，Configuration维护了一个Map集合来缓存MappedStatement实例，key为nameSpace.functionName。<br>　　SqlSession会根据传入的statementID（即上面的key）获取配置缓存区中的MappedStatement实例，然后将操作参数交给Executor执行具体任务。</p>
-<h2 id="3-Executor执行器"><a href="#3-Executor执行器" class="headerlink" title="3. Executor执行器"></a>3. Executor执行器</h2><h3 id="3-1-BaseExecutor"><a href="#3-1-BaseExecutor" class="headerlink" title="3.1. BaseExecutor"></a>3.1. BaseExecutor</h3><pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+<h3 id="Executor执行器"><a href="#Executor执行器" class="headerlink" title="Executor执行器"></a>Executor执行器</h3><h4 id="BaseExecutor"><a href="#BaseExecutor" class="headerlink" title="BaseExecutor"></a>BaseExecutor</h4><pre><code>public &lt;E&gt; List&lt;E&gt; query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
     //创建BoundSql实例
     BoundSql boundSql = ms.getBoundSql(parameter);
     //获取缓存key
@@ -2617,7 +3813,7 @@ private &lt;E&gt; List&lt;E&gt; queryFromDatabase(MappedStatement ms, Object par
     return list;
   }
 </code></pre><p>BaseExecutor作为模板类，主要任务就是创建BoundSql实例. 处理一级缓存的内容，以及决定是否需要重新查询数据库取值，具体的数据库操作doQuery由子类进行差异化实现。</p>
-<h3 id="3-2-SimpleExecutor"><a href="#3-2-SimpleExecutor" class="headerlink" title="3.2. SimpleExecutor"></a>3.2. SimpleExecutor</h3><pre><code>public &lt;E&gt; List&lt;E&gt; doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
+<h4 id="SimpleExecutor"><a href="#SimpleExecutor" class="headerlink" title="SimpleExecutor"></a>SimpleExecutor</h4><pre><code>public &lt;E&gt; List&lt;E&gt; doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
     Statement stmt = null;
     try {
       //获取配置上下文
@@ -2633,7 +3829,7 @@ private &lt;E&gt; List&lt;E&gt; queryFromDatabase(MappedStatement ms, Object par
     }
   }
 </code></pre><p>　　这里可以看出Executor的主要任务就是通过StatementHandler创建Statement实例，此时会将参数绑定到statement的指定位置，然后将任务下方到StatementHandler中，StatementHandler与JDBC进行交互。</p>
-<h2 id="4-SimpleStatementHandler"><a href="#4-SimpleStatementHandler" class="headerlink" title="4. SimpleStatementHandler"></a>4. SimpleStatementHandler</h2><pre><code>public &lt;E&gt; List&lt;E&gt; query(Statement statement, ResultHandler resultHandler) throws SQLException {
+<h3 id="SimpleStatementHandler"><a href="#SimpleStatementHandler" class="headerlink" title="SimpleStatementHandler"></a>SimpleStatementHandler</h3><pre><code>public &lt;E&gt; List&lt;E&gt; query(Statement statement, ResultHandler resultHandler) throws SQLException {
     //获取sql
     String sql = boundSql.getSql();
     //执行查询
@@ -2642,7 +3838,7 @@ private &lt;E&gt; List&lt;E&gt; queryFromDatabase(MappedStatement ms, Object par
     return resultSetHandler.&lt;E&gt;handleResultSets(statement);
   }
 </code></pre><p>　　SimpleStatementHandler执行了sql语句，并将结果交给ResultSetHandler处理。</p>
-<h2 id="5-ResultSetHandler"><a href="#5-ResultSetHandler" class="headerlink" title="5. ResultSetHandler"></a>5. ResultSetHandler</h2><pre><code>public List&lt;Object&gt; handleResultSets(Statement stmt) throws SQLException {
+<h3 id="ResultSetHandler"><a href="#ResultSetHandler" class="headerlink" title="ResultSetHandler"></a>ResultSetHandler</h3><pre><code>public List&lt;Object&gt; handleResultSets(Statement stmt) throws SQLException {
     ErrorContext.instance().activity(&quot;handling results&quot;).object(mappedStatement.getId());
 
     final List&lt;Object&gt; multipleResults = new ArrayList&lt;Object&gt;();

@@ -14,7 +14,7 @@ tags: MyBatis
 ![](/images/mybatis_8.png)
 
 　　可以看出StatementHandler和他的带头大哥一样是使用的模板模式，下面就先看下这个模板类BaseStatementHandler。
-# 1. BaseStatementHandler
+## BaseStatementHandler
 　　BaseStatementHandler需要关注的方法只有一个，下面来看下源码：
 
 	public Statement prepare(Connection connection, Integer transactionTimeout) throws SQLException {
@@ -36,7 +36,7 @@ tags: MyBatis
 	      throw new ExecutorException("Error preparing statement.  Cause: " + e, e);
 	    }
 	  }
-# 2. SimpleStatementHandler
+## SimpleStatementHandler
 　　一看名字就知道了，这是执行简单sql小分队的苦力，正好用来举例，先来看看CRUD方法：
 
 	public int update(Statement statement) throws SQLException {
@@ -88,16 +88,16 @@ tags: MyBatis
 	  }
 	  protected Statement instantiateStatement(Connection connection) throws SQLException {
 	    if (mappedStatement.getResultSetType() != null) {
-	//创建能返回指定类型的ResultSet的Statement实例
+		  //创建能返回指定类型的ResultSet的Statement实例
 	      return connection.createStatement(mappedStatement.getResultSetType().getValue(), ResultSet.CONCUR_READ_ONLY);
 	    } else {
-	//创建普通Statement实例
+		  //创建普通Statement实例
 	      return connection.createStatement();
 	    }
 	  }
 simple不愧simple之名，除了update稍微复杂点都很简单，需要注意的是SimpleStatementHandler中的parameterize方法是没有实现的，即不支持绑定参数。
 
-# 3. PreparedStatementHandler
+## PreparedStatementHandler
 　　这个是预编译小组的小伙伴，这个小伙伴和simple挺像，甚至update比simple还要简单，真不知道到底他俩谁才更像simple（笑），不过说归说这次的是有很大不同的，下面看下源码：
 
 	protected Statement instantiateStatement(Connection connection) throws SQLException {
@@ -139,7 +139,7 @@ simple不愧simple之名，除了update稍微复杂点都很简单，需要注�
 	    parameterHandler.setParameters((PreparedStatement) statement);
 	  }
 
-# 4. CallableStatementHandler
+## CallableStatementHandler
 　　顾名思义这个就是处理存储过程的小伙伴了，他的修改. 查询方法与上面两位几乎相同就不在赘述了，下面看下不一样的地方：
 
 	protected Statement instantiateStatement(Connection connection) throws SQLException {
@@ -187,7 +187,7 @@ simple不愧simple之名，除了update稍微复杂点都很简单，需要注�
 	    }
 	  }
 
-# 5. RoutingStatementHandler
+## RoutingStatementHandler
 　　MyBatis中默认实现的StatementHandler就是RoutingStatementHandler，RoutingStatementHandler并没有实现具体的业务逻辑，而是作为一个选择器的角色存在，通过配置中的设置决定实例化哪种子类
 
 	 public RoutingStatementHandler(Executor executor, MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {

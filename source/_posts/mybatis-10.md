@@ -5,18 +5,19 @@ tags: MyBatis
 ---
 
 　　MyBatis作为一款ORM框架，反射是必不可少的一环，reflection就是MyBatis的反射模块。从代码角度来看reflection包相当的独立，除了jdk之外没有其他的包外引用，完全可以单独提取出来作为工具使用。
-![](/images/mybatis_18.png)
 <!-- more -->
+![](/images/mybatis_18.png)
 
-# 1. MetaObject创建流程
+
+## MetaObject创建流程
 ![](/images/mybatis_19.png)
 
-# 2. MetaObject
+## MetaObject
 ![](/images/mybatis_20.png)
 
 　　MetaObject作为reflection暴露在最外层的调用类，不仅承载了提供反射的各种实现调用的入口的责任，还担任了下层调用对象（ObjectWrapper包装者）的分发任务，MetaObject只有一个私有的构造方法，所以想创建MetaObject的实例只能通过MetaObject.forObject方法。
 
-	 public static MetaObject forObject(Object object, ObjectFactory objectFactory, ObjectWrapperFactory objectWrapperFactory, ReflectorFactory reflectorFactory) {
+	public static MetaObject forObject(Object object, ObjectFactory objectFactory, ObjectWrapperFactory objectWrapperFactory, ReflectorFactory reflectorFactory) {
 	    if (object == null) {
 	      return SystemMetaObject.NULL_META_OBJECT;
 	    } else {
@@ -42,7 +43,7 @@ tags: MyBatis
 	      this.objectWrapper = new BeanWrapper(this, object);
 	    }
 	  }
-既然MetaObject是以反射为基础，那么总重要的自然是getter和setter的实现，下面看一下MetaObject是如何操作属性的：
+　　既然MetaObject是以反射为基础，那么总重要的自然是getter和setter的实现，下面看一下MetaObject是如何操作属性的：
 
 	 public Object getValue(String name) {
 	    PropertyTokenizer prop = new PropertyTokenizer(name);
@@ -83,9 +84,9 @@ tags: MyBatis
 	      objectWrapper.set(prop, value);
 	    }
 	  }
-由上面代码可以看出，MetaObject作为一个反射入口，关键方法的抽象程度是很高的，在这一层也仅仅处理了对象这一层级的逻辑，凡事涉及具体属性的步骤都下放到ObjectWrapper中执行。
+　　由上面代码可以看出，MetaObject作为一个反射入口，关键方法的抽象程度是很高的，在这一层也仅仅处理了对象这一层级的逻辑，凡事涉及具体属性的步骤都下放到ObjectWrapper中执行。
 
-# 3. ObjectWrapper
+## ObjectWrapper
 ![](/images/mybatis_21.png)
 　　上面的MetaObject将指定的属性定位到最后一级，然后就轮到ObjectWrapper出场了，ObjectWrapper主要的职责就是处理这个最后一级的类型，不仅支持简单属性的操作，还兼容集合类型的属性。
 
@@ -112,9 +113,9 @@ tags: MyBatis
 	    }
 	  }
 	/**
-	   * 实例化子级对象的元对象
-	   */
-	  public MetaObject instantiatePropertyValue(String name, PropertyTokenizer prop, ObjectFactory objectFactory) {
+	 * 实例化子级对象的元对象
+	 */
+	public MetaObject instantiatePropertyValue(String name, PropertyTokenizer prop, ObjectFactory objectFactory) {
 	    MetaObject metaValue;
 	    Class<?> type = getSetterType(prop.getName());
 	    try {
@@ -144,28 +145,28 @@ tags: MyBatis
 	      throw new ReflectionException("Could not get property '" + prop.getName() + "' from " + object.getClass() + ".  Cause: " + t.toString(), t);
 	    }
 	  }
-从这个方法可以看出，实际的操作是下放到MetaClass中的，而Invoker才是真正的反射调用器。
+　　从这个方法可以看出，实际的操作是下放到MetaClass中的，而Invoker才是真正的反射调用器。
 
-# 4. MetaClass
+## MetaClass
 ![](/images/mybatis_22.png)
 
 　　MetaClass在我的理解里有些类似模板，MetaClass与MetaObject的关系类似于类与实例，MetaClass提供了类的各种属性方法的反射调用器，MetaObject提供了具体对象的引用，通过ObjectWrapper这个黑中介就联系到了一起。
 
 	//获取name属性的getter调用器
-	  public Invoker getGetInvoker(String name) {
+	public Invoker getGetInvoker(String name) {
 	    return reflector.getGetInvoker(name);
 	  }
 
-	  //获取name属性的setter调用器
-	  public Invoker getSetInvoker(String name) {
+	//获取name属性的setter调用器
+	public Invoker getSetInvoker(String name) {
 	    return reflector.getSetInvoker(name);
 	  }
 	/**
-	   * 获取prop中一级属性的类型
-	   * @param prop
-	   * @return
-	   */
-	  private Class<?> getGetterType(PropertyTokenizer prop) {
+	 * 获取prop中一级属性的类型
+	 * @param prop
+	 * @return
+	 */
+	private Class<?> getGetterType(PropertyTokenizer prop) {
 	    Class<?> type = reflector.getGetterType(prop.getName());
 	    if (prop.getIndex() != null && Collection.class.isAssignableFrom(type)) {
 	      //prop指定属性为实现了Collection接口的集合类型
@@ -185,11 +186,11 @@ tags: MyBatis
 	    return type;
 	  }
 	/**
-	   * 查询是否存在name属性的setter方法
-	   * @param name
-	   * @return
-	   */
-	  public boolean hasSetter(String name) {
+	 * 查询是否存在name属性的setter方法
+	 * @param name
+	 * @return
+	 */
+	public boolean hasSetter(String name) {
 	    PropertyTokenizer prop = new PropertyTokenizer(name);
 	    if (prop.hasNext()) {
 	      //如果是多级属性，会依次向下递归，查询指定的最底层属性的setter方法
@@ -204,23 +205,23 @@ tags: MyBatis
 	    }
 	  }
 
-# 5. Reflector
+## Reflector
 　　Reflector是整个反射模块的核心，是维护Invoker的容器，所有的反射操作都会放到Reflector来进行调度。下面看下Reflector的初始化流程：
 
 	//反射容器对应的类
-	  private Class<?> type;
-	  //setter方法调用器缓存
-	  private Map<String, Invoker> setMethods = new HashMap<String, Invoker>();
-	  //getter方法调用器缓存
-	  private Map<String, Invoker> getMethods = new HashMap<String, Invoker>();
-	  //setter方法对应属性类型缓存
-	  private Map<String, Class<?>> setTypes = new HashMap<String, Class<?>>();
-	  //getter方法对应属性类型缓存
-	  private Map<String, Class<?>> getTypes = new HashMap<String, Class<?>>();
-	  //默认构造器
-	  private Constructor<?> defaultConstructor;
-	  //全大写属性名集合，为了兼容传入参数的大小写
-	  private Map<String, String> caseInsensitivePropertyMap = new HashMap<String, String>();
+	private Class<?> type;
+	//setter方法调用器缓存
+	private Map<String, Invoker> setMethods = new HashMap<String, Invoker>();
+	//getter方法调用器缓存
+	private Map<String, Invoker> getMethods = new HashMap<String, Invoker>();
+	//setter方法对应属性类型缓存
+	private Map<String, Class<?>> setTypes = new HashMap<String, Class<?>>();
+	//getter方法对应属性类型缓存
+	private Map<String, Class<?>> getTypes = new HashMap<String, Class<?>>();
+	//默认构造器
+	private Constructor<?> defaultConstructor;
+	//全大写属性名集合，为了兼容传入参数的大小写
+	private Map<String, String> caseInsensitivePropertyMap = new HashMap<String, String>();
 
 	public Reflector(Class<?> clazz) {
 	    type = clazz;
@@ -245,9 +246,9 @@ tags: MyBatis
 	    }
 	  }
 	/**
-	   * 注册无参构造方法
-	   */
-	  private void addDefaultConstructor(Class<?> clazz) {
+	 * 注册无参构造方法
+	 */
+	private void addDefaultConstructor(Class<?> clazz) {
 		//获取clazz的所有构造器
 	    Constructor<?>[] consts = clazz.getDeclaredConstructors();
 	    for (Constructor<?> constructor : consts) {
@@ -268,10 +269,10 @@ tags: MyBatis
 	    }
 	  }
 	/**
-	   * 注册getter方法
-	   * @param cls
-	   */
-	  private void addGetMethods(Class<?> cls) {
+	 * 注册getter方法
+	 * @param cls
+	 */
+	 private void addGetMethods(Class<?> cls) {
 	    Map<String, List<Method>> conflictingGetters = new HashMap<String, List<Method>>();
 	    //获取cls中的所有方法，包括父类和接口中的方法
 	    Method[] methods = getClassMethods(cls);
@@ -292,10 +293,10 @@ tags: MyBatis
 	    resolveGetterConflicts(conflictingGetters);
 	  }
 	/**
-	   * 过滤掉同一名称的getter方法，返回值为同一继承树的类型以子类型为主
-	   * @param conflictingGetters
-	   */
-	  private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
+	 * 过滤掉同一名称的getter方法，返回值为同一继承树的类型以子类型为主
+	 * @param conflictingGetters
+	 */
+	private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
 	    for (Entry<String, List<Method>> entry : conflictingGetters.entrySet()) {
 	      Method winner = null;
 	      String propName = entry.getKey();
@@ -333,10 +334,10 @@ tags: MyBatis
 	    }
 	  }
 	/**
-	   * 注册setter方法
-	   * @param cls
-	   */
-	  private void addSetMethods(Class<?> cls) {
+	 * 注册setter方法
+	 * @param cls
+	 */
+	private void addSetMethods(Class<?> cls) {
 	    Map<String, List<Method>> conflictingSetters = new HashMap<String, List<Method>>();
 	    Method[] methods = getClassMethods(cls);
 	    for (Method method : methods) {
@@ -353,12 +354,12 @@ tags: MyBatis
 	    resolveSetterConflicts(conflictingSetters);
 	  }
 	/**
-	   * 将method添加值conflictingMethods集合,可以支持同一属性多个方法
-	   * @param conflictingMethods
-	   * @param name
-	   * @param method
-	   */
-	  private void addMethodConflict(Map<String, List<Method>> conflictingMethods, String name, Method method) {
+	 * 将method添加值conflictingMethods集合,可以支持同一属性多个方法
+	 * @param conflictingMethods
+	 * @param name
+	 * @param method
+	 */
+	private void addMethodConflict(Map<String, List<Method>> conflictingMethods, String name, Method method) {
 	    List<Method> list = conflictingMethods.get(name);
 	    if (list == null) {
 	      list = new ArrayList<Method>();
@@ -367,10 +368,10 @@ tags: MyBatis
 	    list.add(method);
 	  }
 	/**
-	   * 过滤掉同一名称的setter方法，返回值为同一继承树的类型以子类型为主
-	   * @param conflictingGetters
-	   */
-	  private void resolveSetterConflicts(Map<String, List<Method>> conflictingSetters) {
+	 * 过滤掉同一名称的setter方法，返回值为同一继承树的类型以子类型为主
+	 * @param conflictingGetters
+	 */
+	private void resolveSetterConflicts(Map<String, List<Method>> conflictingSetters) {
 	    for (String propName : conflictingSetters.keySet()) {
 	      List<Method> setters = conflictingSetters.get(propName);
 	      //从缓存集合中获取propName属性对应的get类型
@@ -403,10 +404,10 @@ tags: MyBatis
 	    }
 	  }
 	/**
-	   * 注册属性
-	   * @param clazz
-	   */
-	  private void addFields(Class<?> clazz) {
+	 * 注册属性
+	 * @param clazz
+	 */
+	private void addFields(Class<?> clazz) {
 	    Field[] fields = clazz.getDeclaredFields();
 	    for (Field field : fields) {
 	      //检查是否能够访问类中的字段和调用方法。注意，这不仅包括 public. 而且还包括 protected 和 private 字段和方法。
@@ -437,20 +438,23 @@ tags: MyBatis
 	    }
 	  }
 
-# 6. Invoker
+## Invoker
 作为具体的反射操作调用器，Invoker提供了三种默认实现。
 * GetFieldInvoker：属性get方法调用器
+
 
 	public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {
 	    return field.get(target);
 	  }
 * SetFieldInvoker：属性set方法调用器
 
+
 	public Object invoke(Object target, Object[] args) throws IllegalAccessException, InvocationTargetException {
 	    field.set(target, args[0]);
 	    return null;
 	  }
 * MethodInvoker：方法调用器
+
 
 	public MethodInvoker(Method method) {
 	    this.method = method;
@@ -465,7 +469,7 @@ tags: MyBatis
 	    return method.invoke(target, args);
 	  }
 
-# 7. PropertyTokenizer
+## PropertyTokenizer
 　　PropertyTokenizer负责处理传入的属性名字符串，这里不仅支持单级，还支持多级和集合类型的属性名。
 
 	public PropertyTokenizer(String fullname) {
@@ -491,15 +495,15 @@ tags: MyBatis
 	    }
 	  }
 
-# 8. PropertyNamer
+## PropertyNamer
 　　PropertyNamer通过方法名获取对应属性名，仅支持get. set. is开头的方法
 
 	/**
-	   * 通过方法名获取对应的属性名，只支持get. set和is开头的方法
-	   * @param name
-	   * @return
-	   */
-	  public static String methodToProperty(String name) {
+	 * 通过方法名获取对应的属性名，只支持get. set和is开头的方法
+	 * @param name
+	 * @return
+	 */
+	public static String methodToProperty(String name) {
 	    if (name.startsWith("is")) {
 	      name = name.substring(2);
 	    } else if (name.startsWith("get") || name.startsWith("set")) {
@@ -513,7 +517,7 @@ tags: MyBatis
 	    return name;
 	  }
 
-# 9. 为什么使用MetaObject
+## 为什么使用MetaObject
 　　MetaObject提供了方便而优雅的方式来操作对象的属性，不仅不需要手动处理各种reflect异常，还可以无视变量的作用域。
 
 　　MetaObject还支持Map和Connection形式的对象，不过相对javaBean来讲简单很多，此处不在赘述。

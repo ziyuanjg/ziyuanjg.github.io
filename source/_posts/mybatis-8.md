@@ -5,16 +5,17 @@ tags: MyBatis
 ---
 
 　　俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。
-# 1. 缓存的作用
+## 缓存的作用
 　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。
 <!-- more -->
-# 2. Cache
+
+## Cache
 　　MyBatis的缓存基础是PerpetualCache，PerpetualCache实现了Cache接口，内部其实是维护了一个HashMap对象进行数据的缓存，下面看下Cache的家族树：
 ![](/images/mybatis_9.png)
 
 乍一看哎呦喂，挺多实现类啊，其实这里使用了装饰者模式，其他的实现类都是装饰了PerpetualCache类。
 
-# 3. 一级缓存
+## 一级缓存
 　　MyBatis的一级缓存默认就是开启的（想关都关不掉），我们能做的就是设置一下他的生命周期，配置如下：
 
 	<settings>
@@ -45,7 +46,7 @@ tags: MyBatis
 
 　　正确的使用缓存确实能提高不少性能，但是这里就引出了一个新问题，如果我缓存的数据过期了怎么办？对于一些时效性不强的模块中有一些脏数据或许不会影响使用，但是对于要求数据时效性很强的系统中就不能这么玩了，所以MyBatis提供了手动配置刷新时机的方法。
 
-一共有五个触发方法会刷新一级缓存：
+一共有四个触发方法会刷新一级缓存：
 * commit
 * rollback
 * update
@@ -138,16 +139,18 @@ tags: MyBatis
 从时间的角度看，MyBatis的一级缓存是粗粒度的，没有缓存过期的概念，也就是不会主动请求数据源对缓存进行更新，
 由上面两点来看呢，一级缓存的一点不泛用性就展现出来了，对于数据变化的频率高，且对数据时效性要求高的业务来说就要控制每个SqlSession的生存时间了，时间越长缓存中的数据的准确性就越低了。
 
-# 4. 二级缓存
+## 二级缓存
 　　一级缓存是在一个SqlSession会话的周期内有效，那么不同的SqlSession想一起玩怎么办呢，这时候就用到了二级缓存。
 ![](/images/mybatis_13.png)
 
-二级缓存简单来说就是在Configuration中维护的一个HashMap集合，MyBatis默认使用的和一级缓存一样是PerpetualCache这个实现（只不过使用TransactionalCache装饰了一下），与一级缓存不同，二级缓存是需要手动开启的，要使用二级缓存需要以下两个步骤：
+　　二级缓存简单来说就是在Configuration中维护的一个HashMap集合，MyBatis默认使用的和一级缓存一样是PerpetualCache这个实现（只不过使用TransactionalCache装饰了一下），与一级缓存不同，二级缓存是需要手动开启的，要使用二级缓存需要以下两个步骤：
 * 配置config.xml：
+
 
 	<setting name="cacheEnabled" value="true"/>
 
 * 配置mapper.xml：
+
 
 	<cache></cache><cache-ref namespace="daoMapper.UserMapper"/>
 
@@ -157,7 +160,7 @@ tags: MyBatis
 * size：引用数目，可以被设置为任意正整数,要记住你缓存的对象数目和你运行环境的 可用内存资源数目。默认值是 1024。
 * readOnly：只读属性，可以被设置为 true 或 false。只读的缓存会给所有调用者返回缓 存对象的相同实例。因此这些对象不能被修改。这提供了很重要的性能优势。可读写的缓存 会返回缓存对象的拷贝(通过序列化) 。这会慢一些,但是安全,因此默认是 false。
 
-一级缓存是在BaseExecutor中进行操作，那二级缓存想要在一级之前调用自然就要在上一级了，MyBatis采用的是装饰器模式，当cacheEnabled设置为true时，默认创建的Executor实例都会用cacheEnabled进行装饰，下面看下cacheEnabled的查询源码：
+　　一级缓存是在BaseExecutor中进行操作，那二级缓存想要在一级之前调用自然就要在上一级了，MyBatis采用的是装饰器模式，当cacheEnabled设置为true时，默认创建的Executor实例都会用cacheEnabled进行装饰，下面看下cacheEnabled的查询源码：
 
 	 public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
 	      throws SQLException {
@@ -184,7 +187,7 @@ tags: MyBatis
 	  }
 
 这里的List<E> list = (List<E>) tcm.getObject(cache, key);是重点，画一下，考试要考，咳咳。
-此处可以看出cache其实是从MappedStatement中取出的，正是因为MappedStatement在MyBatis初始化时就全部创建完毕，所以不会和SqlSession的生命周期挂钩。下面看下之后的方法：
+　　此处可以看出cache其实是从MappedStatement中取出的，正是因为MappedStatement在MyBatis初始化时就全部创建完毕，所以不会和SqlSession的生命周期挂钩。下面看下之后的方法：
 
 	public Object getObject(Cache cache, CacheKey key) {
 	    return getTransactionalCache(cache).getObject(key);
@@ -213,7 +216,7 @@ tags: MyBatis
 	    }
 	  }
 
-上面说了二级缓存是从MappedStatement取出的，那么现在就来找一下二级缓存是如何创建的，之前讲创建SqlSessionFactory的过程时有提到过解析xml配置文件的方法，既然二级缓存的开关是在mapper.xml文件中，那么创建二级缓存的入口自然要落在解析mapper的方法中，下面来看下源码：
+　　上面说了二级缓存是从MappedStatement取出的，那么现在就来找一下二级缓存是如何创建的，之前讲创建SqlSessionFactory的过程时有提到过解析xml配置文件的方法，既然二级缓存的开关是在mapper.xml文件中，那么创建二级缓存的入口自然要落在解析mapper的方法中，下面来看下源码：
 
 	private void cacheElement(XNode context) throws Exception {
 	    if (context != null) {

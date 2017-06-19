@@ -6,11 +6,11 @@ tags: MyBatis
 
 　　Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。
 
-# 1. Plugin可以做什么
+## Plugin可以做什么
 　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。
 <!-- more -->
 
-# 2. Plugin如何工作
+## Plugin如何工作
 ![](/images/mybatis_23.png)
 
 　　要使用Plugin首先要在config中进行配置
@@ -89,7 +89,7 @@ tags: MyBatis
 			return invocation.proceed();
 		}
 
-# 3. 多个Plugin的执行顺序
+## 多个Plugin的执行顺序
 　　上边既然提到了拦截器链，那自然是可以配置多个Plugin的
 
 	<plugins>
@@ -98,7 +98,7 @@ tags: MyBatis
 	 		<plugin interceptor="interceptor.Interceptor3"></plugin>
 	 </plugins>
 　　上面配置了三个Plugin，在创建运行环境（Configuration）时会依次将Plugin注册在拦截器中，但是为对象绑定代理时顺序则出现了一些不一样的地方，代理的执行顺序却不一定与绑定的顺序一致。如上面的intercept方法：
-　　
+
 	public Object intercept(Invocation invocation) throws Throwable {
 			//TODO1
 	  invocation.proceed();
@@ -106,9 +106,8 @@ tags: MyBatis
 		}
 　　如果是这种形式的拦截器，则会先执行TODO1，然后执行下级拦截器，之后再转回TODO2。
 
-# 4. 拦截器的优缺点
+## 拦截器的优缺点
 　　在漫长的开发过程中，因为人自身的问题导致的程序bug层出不穷，框架就是在这种情况下应运而生，框架简化了编码的操作，极大的拉进了技术人员的差距，但是框架也封装了底层的操作，使得开发人员对程序的把控程度更低了，如果框架的一小部分不适合实际的业务，但是又无法更换框架的时候就需要Plugin这种存在，Plugin是MyBatis主动提供出来的流程修改入口，只要你想，甚至可以改变SqlSession的执行流程。
 
-　　Plugin可以使得开发人员可以根据具体业务对MyBatis的底层做适当的干涉，但是这里就牵涉到第一个问题，人员的问题，如果开发人员自身技术不是很深入，有可能导致整个流程崩溃！一定要慎用！
-而且过多的拦截器会极大的消耗服务器资源，导致运行缓慢。
+　　Plugin可以使得开发人员可以根据具体业务对MyBatis的底层做适当的干涉，但是这里就牵涉到第一个问题，人员的问题，如果开发人员自身技术不是很深入，有可能导致整个流程崩溃！一定要慎用！而且过多的拦截器会极大的消耗服务器资源，导致运行缓慢。
 

@@ -185,7 +185,7 @@
                 
                 <section class="switch-part switch-part2">
                     <div class="widget tagcloud" id="js-tagcloud">
-                        <a href="/tags/MyBatis/" style="font-size: 10px;">MyBatis</a>
+                        <a href="/tags/JDKCode/" style="font-size: 15px;">JDKCode</a> <a href="/tags/MyBatis/" style="font-size: 20px;">MyBatis</a> <a href="/tags/算法/" style="font-size: 10px;">算法</a>
                     </div>
                 </section>
                 
@@ -257,6 +257,342 @@
     </div>
 </nav>
       <div class="body-wrap">
+  
+    <article id="post-mybatis-7" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/15/mybatis-7/" class="article-date">
+      <time datetime="2017-06-15T07:16:47.000Z" itemprop="datePublished">2017-06-15</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <p>　　之前在Statementhandler中有一个成员变量叫ParameterHandler，这个就是第二个苦力（负责绑定参数）了，MyBatis中ParameterHandler只有一个默认实现，下面看一下绑定参数方法的源码：<br>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-7/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-mybatis-6" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/15/mybatis-6/" class="article-date">
+      <time datetime="2017-06-15T07:16:44.000Z" itemprop="datePublished">2017-06-15</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <p>　　现在要说第三个苦力ResultSetHandler（负责处理结果集映射）了，还记得在mapper配置中有一个标签叫resultMap，还有一个叫resultType，这两个标签就是这个时候用的了。ResultSetHandler接口只有一个默认的实现类，下面我们来看看关键的几个方法：<br>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-6/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-mybatis-5" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/15/mybatis-5/" class="article-date">
+      <time datetime="2017-06-15T07:16:40.000Z" itemprop="datePublished">2017-06-15</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <p>上文说到Executor是Mybatis的执行者，Mybatis为了防止工作量太大而暴走就准备了几个苦力供他差遣。</p>
+<ul>
+<li>StatementHandler：负责生产statement实例以及监督statement执行sql操作。</li>
+<li>ParameterHandler：负责绑定参数。</li>
+<li>ResultSetHandler：负责处理结果集</li>
+</ul>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-5/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-mybatis-4" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/15/mybatis-4/" class="article-date">
+      <time datetime="2017-06-15T07:16:38.000Z" itemprop="datePublished">2017-06-15</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <p>　　前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：<br><img src="/images/mybatis_7.png" alt=""><br>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-4/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-mybatis-3" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/15/mybatis-3/" class="article-date">
+      <time datetime="2017-06-15T07:16:35.000Z" itemprop="datePublished">2017-06-15</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <p>　　顾名思义SqlSession指的就是数据库会话，之前说过SqlSessionFactory如何生成SqlSession实例，本次不在赘述。</p>
+<p>　　session中包含了两种执行sql的形式，一种是传统的CRUD，另一种是mapper形式。官方文档推荐使用mapper形式，理由是代码更优雅（笑）。其实主要是mapper形式更加简易，而且通过接口+xml的开发模式代码耦合性很低，更符合开闭原则，而且逻辑看起来更加清晰，配合MyBatis的异常系统定位异常位置简单粗暴（笑哭）。先看下传统的调用方式，下面是outline图：<br><img src="/images/mybatis_6.png" alt=""><br>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/15/mybatis-3/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
   
     <article id="post-mybatis-2" class="article article-type-post" itemscope itemprop="blogPost">
   
@@ -419,7 +755,7 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-              <h1 id="一-MyBatis的架构"><a href="#一-MyBatis的架构" class="headerlink" title="一. MyBatis的架构"></a>一. MyBatis的架构</h1><p><img src="/images/mybatis_1.png" alt=""></p>
+              <h2 id="MyBatis的架构"><a href="#MyBatis的架构" class="headerlink" title="MyBatis的架构"></a>MyBatis的架构</h2><p><img src="/images/mybatis_1.png" alt=""></p>
           
       
     </div>

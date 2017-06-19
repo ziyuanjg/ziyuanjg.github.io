@@ -185,7 +185,7 @@
                 
                 <section class="switch-part switch-part2">
                     <div class="widget tagcloud" id="js-tagcloud">
-                        <a href="/tags/MyBatis/" style="font-size: 10px;">MyBatis</a>
+                        <a href="/tags/JDKCode/" style="font-size: 15px;">JDKCode</a> <a href="/tags/MyBatis/" style="font-size: 20px;">MyBatis</a> <a href="/tags/算法/" style="font-size: 10px;">算法</a>
                     </div>
                 </section>
                 
@@ -258,6 +258,344 @@
 </nav>
       <div class="body-wrap">
   
+    <article id="post-AVL" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/19/AVL/" class="article-date">
+      <time datetime="2017-06-19T06:29:39.000Z" itemprop="datePublished">2017-06-19</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/19/AVL/">AVL树的平衡算法（JAVA实现）</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <h2 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h2><p>　　AVL树本质上还是一个二叉搜索树，不过比二叉搜索树多了一个平衡条件：每个节点的左右子树的高度差不大于1。二叉树的应用是为了弥补链表的查询效率问题，但是极端情况下，二叉搜索树会无限接近于链表，这种时候就无法体现二叉搜索树在查询时的高效率，而最初出现的解决方式就是AVL树。如下图：<br>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/算法/">算法</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/19/AVL/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-JDKCode-4" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/19/JDKCode-4/" class="article-date">
+      <time datetime="2017-06-19T06:29:30.000Z" itemprop="datePublished">2017-06-19</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/19/JDKCode-4/">LinkedList源码阅读笔记（基于JDK1.8）</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <p>　　LinkedList是List接口的一个有序链表实现，存储节点是内部类Node，Node中有两个属性prev和next，负责连接前后两个元素。由于不是使用数组进行存储，所以查询需要遍历链表一半的元素（后面会解释），但是因为插入的时候只需要查询插入位置的元素，然后修改前后两个元素的对应属性即可，所以插入效率相对ArrayList较高（针对add(int index, E element)方法，add(E e)直接插入链表最后）。<br>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JDKCode/">JDKCode</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/19/JDKCode-4/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-JDKCode-3" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/19/JDKCode-3/" class="article-date">
+      <time datetime="2017-06-19T06:29:28.000Z" itemprop="datePublished">2017-06-19</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/19/JDKCode-3/">ArrayList源码阅读笔记(基于JDk1.8)</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>　　ArrayList是基于数组实现的一个有序的列表，允许添加null值.除了List接口中的方法外，还实现了一些操作数组元素和大小的方法，具体下面会列举。每个ArrayList实例都有一个元素数，即size属性，这个属性标注了在实例中包含了多少个元素，这些元素存储在elementData这个数组中，当实例的容量不足时，会调用grow方法进行扩容，通常情况下每次扩大一半容量，但是有两种特殊情况，一种是手动指定的容量大于当前容量的1.5倍时会按照指定容量扩容，另一种是当前容量的1.5倍大于MAX_ARRAY_SIZE这个值的时候会扩容至Integer.MAX_VALUE或MAX_ARRAY_SIZE。</p>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JDKCode/">JDKCode</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/19/JDKCode-3/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-JDKCode-2" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/19/JDKCode-2/" class="article-date">
+      <time datetime="2017-06-19T06:29:18.000Z" itemprop="datePublished">2017-06-19</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/19/JDKCode-2/">LinkedHashMap源码阅读笔记（基于jdk1.8）</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <p>　　LinkedHashMap是HashMap的子类，很多地方都是直接引用HashMap中的方法，所以需要注意的地方并不多。关键的点就是几个重写的方法：</p>
+<h2 id="Entry"><a href="#Entry" class="headerlink" title="Entry"></a>Entry</h2><p>　　Entry是继承与Node类，也就是LinkedHashMap与HashMap的根本区别所在，Node是链表形式，只有next与下一个元素进行连接，而Entry的链表有before和after两个连接点。</p>
+<pre><code>static class Entry&lt;K,V&gt; extends HashMap.Node&lt;K,V&gt; {
+    Entry&lt;K,V&gt; before, after;
+    Entry(int hash, K key, V value, Node&lt;K,V&gt; next) {
+        super(hash, key, value, next);
+    }
+}
+</code></pre>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JDKCode/">JDKCode</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/19/JDKCode-2/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
+    <article id="post-JDKCode-1" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a  href="/2017/06/19/JDKCode-1/" class="article-date">
+      <time datetime="2017-06-19T06:29:15.000Z" itemprop="datePublished">2017-06-19</time>
+</a>
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a  class="article-title" href="/2017/06/19/JDKCode-1/">HashMap源码阅读笔记（基于jdk1.8）</a>
+    </h1>
+  
+
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+              <h2 id="HashMap概述"><a href="#HashMap概述" class="headerlink" title="HashMap概述"></a>HashMap概述</h2><p>　　HashMap是基于Map接口的一个非同步实现，此实现提供key-value形式的数据映射，支持null值。<br>
+          
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+
+      
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JDKCode/">JDKCode</a></li></ul>
+    </div>
+
+      
+        <p class="article-more-link">
+          <a   href="/2017/06/19/JDKCode-1/#more">查看更多 >></a>
+        </p>
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+
+
+  
     <article id="post-mybatis-12" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
@@ -287,7 +625,7 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-              <h1 id="1-MyBatis中和动态SQl相关的类"><a href="#1-MyBatis中和动态SQl相关的类" class="headerlink" title="1. MyBatis中和动态SQl相关的类"></a>1. MyBatis中和动态SQl相关的类</h1><h2 id="1-1-BaseBuilder"><a href="#1-1-BaseBuilder" class="headerlink" title="1.1. BaseBuilder"></a>1.1. BaseBuilder</h2><p><img src="/images/mybatis_24.png" alt=""><br>
+              <h2 id="MyBatis中和动态SQl相关的类"><a href="#MyBatis中和动态SQl相关的类" class="headerlink" title="MyBatis中和动态SQl相关的类"></a>MyBatis中和动态SQl相关的类</h2><h3 id="BaseBuilder"><a href="#BaseBuilder" class="headerlink" title="BaseBuilder"></a>BaseBuilder</h3><p><img src="/images/mybatis_24.png" alt=""><br>
           
       
     </div>
@@ -354,7 +692,7 @@
       
           
               <p>　　Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。</p>
-<h1 id="1-Plugin可以做什么"><a href="#1-Plugin可以做什么" class="headerlink" title="1. Plugin可以做什么"></a>1. Plugin可以做什么</h1><p>　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。<br>
+<h2 id="Plugin可以做什么"><a href="#Plugin可以做什么" class="headerlink" title="Plugin可以做什么"></a>Plugin可以做什么</h2><p>　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。<br>
           
       
     </div>
@@ -420,7 +758,7 @@
     <div class="article-entry" itemprop="articleBody">
       
           
-              <p>　　MyBatis作为一款ORM框架，反射是必不可少的一环，reflection就是MyBatis的反射模块。从代码角度来看reflection包相当的独立，除了jdk之外没有其他的包外引用，完全可以单独提取出来作为工具使用。<br><img src="/images/mybatis_18.png" alt=""><br>
+              <p>　　MyBatis作为一款ORM框架，反射是必不可少的一环，reflection就是MyBatis的反射模块。从代码角度来看reflection包相当的独立，除了jdk之外没有其他的包外引用，完全可以单独提取出来作为工具使用。<br>
           
       
     </div>
@@ -487,7 +825,7 @@
       
           
               <p>　　MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。</p>
-<h1 id="1-DataSource的三种类型"><a href="#1-DataSource的三种类型" class="headerlink" title="1. DataSource的三种类型"></a>1. DataSource的三种类型</h1><p>MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。<br>
+<h2 id="DataSource的三种类型"><a href="#DataSource的三种类型" class="headerlink" title="DataSource的三种类型"></a>DataSource的三种类型</h2><p>　　MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。<br>
           
       
     </div>
@@ -554,7 +892,7 @@
       
           
               <p>　　俗话说不搞缓存的ORM不是好框架（笑），咱大MyBatis自然也不能免俗了，这就提供了一级缓存和二级缓存来应个景。</p>
-<h1 id="1-缓存的作用"><a href="#1-缓存的作用" class="headerlink" title="1. 缓存的作用"></a>1. 缓存的作用</h1><p>　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。<br>
+<h2 id="缓存的作用"><a href="#缓存的作用" class="headerlink" title="缓存的作用"></a>缓存的作用</h2><p>　　在实际的业务场景里，通常查询操作比修改操作多很多，当并发量很大的时候就会让服务器不堪重负，但是老板又不给批款购买新机器，这可怎么办呢？只能发挥程序员的奇思妙想提升程序的性能了，既然与数据库的会话会消耗很多性能，那就将使用最多的查询功能提取出来，将常用查询语句的结果放在内存中缓存，这样每次先在内存中查询是否有缓存数据，如果没有才会创建一个数据库会话，是不是就快很多了。但是这也有一个新的问题，就是缓存的命中率，如果架构设计的时候设计不当，导致常用的语句没设置缓存，不常用的却设置了缓存，反而会降低系统性能。<br>
           
       
     </div>
@@ -571,342 +909,6 @@
       
         <p class="article-more-link">
           <a   href="/2017/06/15/mybatis-8/#more">查看更多 >></a>
-        </p>
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-
-
-  
-    <article id="post-mybatis-7" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a  href="/2017/06/15/mybatis-7/" class="article-date">
-      <time datetime="2017-06-15T07:16:47.000Z" itemprop="datePublished">2017-06-15</time>
-</a>
-
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a>
-    </h1>
-  
-
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-          
-              <p>　　之前在Statementhandler中有一个成员变量叫ParameterHandler，这个就是第二个苦力（负责绑定参数）了，MyBatis中ParameterHandler只有一个默认实现，下面看一下绑定参数方法的源码：<br>
-          
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-
-      
-    <div class="article-tag tagcloud">
-        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
-    </div>
-
-      
-        <p class="article-more-link">
-          <a   href="/2017/06/15/mybatis-7/#more">查看更多 >></a>
-        </p>
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-
-
-  
-    <article id="post-mybatis-6" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a  href="/2017/06/15/mybatis-6/" class="article-date">
-      <time datetime="2017-06-15T07:16:44.000Z" itemprop="datePublished">2017-06-15</time>
-</a>
-
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a>
-    </h1>
-  
-
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-          
-              <p>　　现在要说第三个苦力ResultSetHandler（负责处理结果集映射）了，还记得在mapper配置中有一个标签叫resultMap，还有一个叫resultType，这两个标签就是这个时候用的了。<br>　　ResultSetHandler接口只有一个默认的实现类，下面我们来看看关键的几个方法：<br>
-          
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-
-      
-    <div class="article-tag tagcloud">
-        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
-    </div>
-
-      
-        <p class="article-more-link">
-          <a   href="/2017/06/15/mybatis-6/#more">查看更多 >></a>
-        </p>
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-
-
-  
-    <article id="post-mybatis-5" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a  href="/2017/06/15/mybatis-5/" class="article-date">
-      <time datetime="2017-06-15T07:16:40.000Z" itemprop="datePublished">2017-06-15</time>
-</a>
-
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a>
-    </h1>
-  
-
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-          
-              <p>上文说到Executor是Mybatis的执行者，Mybatis为了防止工作量太大而暴走就准备了几个苦力供他差遣。</p>
-<ul>
-<li>StatementHandler：负责生产statement实例以及监督statement执行sql操作。</li>
-<li>ParameterHandler：负责绑定参数。</li>
-<li>ResultSetHandler：负责处理结果集</li>
-</ul>
-          
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-
-      
-    <div class="article-tag tagcloud">
-        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
-    </div>
-
-      
-        <p class="article-more-link">
-          <a   href="/2017/06/15/mybatis-5/#more">查看更多 >></a>
-        </p>
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-
-
-  
-    <article id="post-mybatis-4" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a  href="/2017/06/15/mybatis-4/" class="article-date">
-      <time datetime="2017-06-15T07:16:38.000Z" itemprop="datePublished">2017-06-15</time>
-</a>
-
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a>
-    </h1>
-  
-
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-          
-              <p>　　前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：<br><img src="/images/mybatis_7.png" alt=""><br>
-          
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-
-      
-    <div class="article-tag tagcloud">
-        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
-    </div>
-
-      
-        <p class="article-more-link">
-          <a   href="/2017/06/15/mybatis-4/#more">查看更多 >></a>
-        </p>
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-
-
-  
-    <article id="post-mybatis-3" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a  href="/2017/06/15/mybatis-3/" class="article-date">
-      <time datetime="2017-06-15T07:16:35.000Z" itemprop="datePublished">2017-06-15</time>
-</a>
-
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a  class="article-title" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a>
-    </h1>
-  
-
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-          
-              <p>　　顾名思义SqlSession指的就是数据库会话，之前说过SqlSessionFactory如何生成SqlSession实例，本次不在赘述。</p>
-<p>　　session中包含了两种执行sql的形式，一种是传统的CRUD，另一种是mapper形式。官方文档推荐使用mapper形式，理由是代码更优雅（笑）。其实主要是mapper形式更加简易，而且通过接口+xml的开发模式代码耦合性很低，更符合开闭原则，而且逻辑看起来更加清晰，配合MyBatis的异常系统定位异常位置简单粗暴（笑哭）。先看下传统的调用方式，下面是outline图：<br><img src="/images/mybatis_6.png" alt=""><br>
-          
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-
-      
-    <div class="article-tag tagcloud">
-        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MyBatis/">MyBatis</a></li></ul>
-    </div>
-
-      
-        <p class="article-more-link">
-          <a   href="/2017/06/15/mybatis-3/#more">查看更多 >></a>
         </p>
       
       <div class="clearfix"></div>

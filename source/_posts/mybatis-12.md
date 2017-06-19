@@ -4,8 +4,8 @@ date: 2017-06-15 15:17:11
 tags: MyBatis
 ---
 
-# 1. MyBatis中和动态SQl相关的类
-## 1.1. BaseBuilder
+## MyBatis中和动态SQl相关的类
+### BaseBuilder
 ![](/images/mybatis_24.png)
 <!-- more -->
 
@@ -17,7 +17,7 @@ BaseBuilder主要负责解析xml配置文件，以及构建各种相关的实例
 * MapperBuilderAssistant：辅助构建工具类
 * SqlSourceBuilder：sql源构建类
 
-## 1.2. SqlNode
+### SqlNode
 ![](/images/mybatis_25.png)
 
 SqlNode对应的就是动态sql的各种标签了：
@@ -32,7 +32,7 @@ SqlNode对应的就是动态sql的各种标签了：
 * WhereSqlNode：TrimSqlNode的where调用
 * VarDeclSqlNode：对应bind标签，用于解析Ognl表达式
 
-## 1.3. SqlSource
+### SqlSource
 ![](/images/mybatis_26.png)
 SqlSource是处理xml配置文件中的sql部分的工具：
 * DynamicSqlSource：创建动态sqlSourse
@@ -40,18 +40,18 @@ SqlSource是处理xml配置文件中的sql部分的工具：
 * RawSqlSource：处理静态sql
 * StaticSqlSource：创建静态sqlSourse
 
-## 1.4. LanguageDriver
+### LanguageDriver
 　　LanguageDriver主要实现类是XMLLanguageDriver，XMLLanguageDriver内部使用XMLScriptBuilder解析sql节点，用于生成SqlSource。
 
-# 2. 动态Sql创建流程
+## 动态Sql创建流程
 ![](/images/mybatis_26.png)
 
 　　mapper的路径既然是在全局xml中配置的，那么入口自然也要落在创建运行环境上下文中
 
 	private void parseConfiguration(XNode root) {
 	    try {
-	     //TODO
-	//此处进入解析mappers节点流程
+	      //TODO
+		  //此处进入解析mappers节点流程
 	      mapperElement(root.evalNode("mappers"));
 	    } catch (Exception e) {
 	      throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
@@ -187,7 +187,7 @@ SqlSource是处理xml配置文件中的sql部分的工具：
 
 　　至此就完成了mapper配置文件的读取注册流程。
 
-3、通过sql模板生成动态sql流程
+## 通过sql模板生成动态sql流程
 ![](/images/mybatis_28.png)
 
 　　既然是动态sql，那自然是运行时才会根据参数生成执行sql了，下面以query为例，简析生成动态sql的流程：

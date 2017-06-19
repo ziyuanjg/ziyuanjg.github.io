@@ -6,14 +6,14 @@ tags: MyBatis
 
 　　MyBatis是一种ORM框架，作为关系映射一端的数据源自然是重中之重了，下面就简单介绍下MyBatis的数据源模块。
 
-# 1. DataSource的三种类型
-MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。
+## DataSource的三种类型
+　　MyBatis中默认有三种DataSource实现，分别是不使用连接池的UnpooledDataSource、使用连接池的PooledDataSource和使用JNDI的JndiDataSource。
 <!-- more -->
 
-# 2. DataSource的创建过程
+## DataSource的创建过程
 ![](/images/mybatis_14.png)
 
-## 2.1. 在config.xml中配置environments标签
+### 在config.xml中配置environments标签
 
 	<environments default="development1">
 	 	<environment id="development1">
@@ -27,11 +27,11 @@ MyBatis中默认有三种DataSource实现，分别是不使用连接池的Unpool
 	 	</environment>
 	</environments>
 
-## 2.2. 创建SqlSessionFactory
+### 创建SqlSessionFactory
 
 	SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(is,"development1");
 
-## 2.3. 构造Configuration实例
+### 构造Configuration实例
 
 	public Configuration parse() {
 	    if (parsed) {
@@ -42,7 +42,7 @@ MyBatis中默认有三种DataSource实现，分别是不使用连接池的Unpool
 	    parseConfiguration(parser.evalNode("/configuration"));
 	    return configuration;
 	  }
-## 2.4. 读取environments标签
+### 读取environments标签
 
 	private void environmentsElement(XNode context) throws Exception {
 	    if (context != null) {
@@ -70,14 +70,14 @@ MyBatis中默认有三种DataSource实现，分别是不使用连接池的Unpool
 	    }
 	  }
 
-# 3. 不使用连接池的DataSource
+## 不使用连接池的DataSource
 ![](/images/mybatis_15.png)
 
 UnpooledDataSource相对PooledDataSource简单一点，每次调用都创建一个数据库连接，执行之后连接即可销毁。相关类主要有以下两个
-## 3.1. UnpooledDataSourceFactory
+### UnpooledDataSourceFactory
 只有两个方法setProperties和getDataSource，一个设置数据源参数，一个获取数据源。
 
-## 3.2. UnpooledDataSource
+### UnpooledDataSource
 既然是数据源，那最重要也就是获取数据库连接的方法了，下面看下获取数据库连接的方法：
 
 	private Connection doGetConnection(Properties properties) throws SQLException {
@@ -90,15 +90,15 @@ UnpooledDataSource相对PooledDataSource简单一点，每次调用都创建一�
 	    return connection;
 	  }
 
-# 4. 使用连接池的DataSource
+## 使用连接池的DataSource
 ![](/images/mybatis_16.png)
 
 　　PooledDataSource从源码角度来看实际是在UnpooledDataSource架子上做了一些扩展，在PooledDataSource维护了一个UnpooledDataSource实例，获取数据库连接的依然是UnpooledDataSource的那一套方法，不过既然要使用连接池自然不会如此简单，这就涉及到了PoolState和PooledConnection这两个类。
 
-## 4.1. PoolState
+### PoolState
 PoolState是连接池的状态上下文，内部维护了很多运行时的状态数据，其中只有两个参与了连接池的操作，(空闲连接队列)idleConnections和(活跃连接队列)activeConnections。
 
-## 4.2. PooledConnection
+### PooledConnection
 数据库连接的代理类，说到代理类，那自然就有invoke方法了：
 
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -121,7 +121,7 @@ PoolState是连接池的状态上下文，内部维护了很多运行时的状�
 	  }
 有上面源码可知，其实代理主要是为了处理close方法，毕竟连接池中的连接是需要重用的，不然岂不是和不用连接池一样了。
 
-## 4.3. PooledDataSource
+### PooledDataSource
 
 	  //连接池状态上下文
 	  private final PoolState state = new PoolState(this);
@@ -188,7 +188,7 @@ PoolState是连接池的状态上下文，内部维护了很多运行时的状�
 	    }
 	  }
 
-通常情况下，当我们使用完一个连接时，会调用close方法释放连接，避免影响性能，连接池中的连接代理实例调用close方法时实际上不会简单的释放掉连接，而是调用pushConnection方法将连接放入空闲队列，等待下次调用。
+　　通常情况下，当我们使用完一个连接时，会调用close方法释放连接，避免影响性能，连接池中的连接代理实例调用close方法时实际上不会简单的释放掉连接，而是调用pushConnection方法将连接放入空闲队列，等待下次调用。
 
 	  protected void pushConnection(PooledConnection conn) throws SQLException {
 	    synchronized (state) {
@@ -238,9 +238,9 @@ PoolState是连接池的状态上下文，内部维护了很多运行时的状�
 	  }
 
 	/**
-	   * 获取连接
-	   */
-	  private PooledConnection popConnection(String username, String password) throws SQLException {
+	 * 获取连接
+	 */
+	private PooledConnection popConnection(String username, String password) throws SQLException {
 	    boolean countedWait = false;
 	    PooledConnection conn = null;
 	    long t = System.currentTimeMillis();
@@ -410,7 +410,7 @@ PoolState是连接池的状态上下文，内部维护了很多运行时的状�
 	    return result;
 	  }
 
-# 5. 使用连接池有什么好处
+## 使用连接池有什么好处
 　　首先我们来看一下创建连接的性能消耗。
 
 	try {
@@ -431,12 +431,12 @@ PoolState是连接池的状态上下文，内部维护了很多运行时的状�
 		e.printStackTrace();
 	}
 
-	![](/images/mybatis_17.png)
+![](/images/mybatis_17.png)
 
 创建一个连接需要178ms，如果请求量上来了，那画面太美。恰巧还是一个“不谙世事”的程序员，天天追着老板买新服务器，估计老板砍死你的心都有了。笑
 连接池中的连接在执行sql操作之后不会进行close，而是调用pushConnection进行调度，将连接在活跃和空闲队列中来回流转，等待执行任务，这样就节约了每次都要创建连接的开销。
 
-# 6. 何时创建Connection
+## 何时创建Connection
 　　当我们需要执行一个sql语句时，Executor会调用getConnection方法创建一个Connection。
 
 	protected Connection getConnection(Log statementLog) throws SQLException {
@@ -454,5 +454,5 @@ PoolState是连接池的状态上下文，内部维护了很多运行时的状�
 	    return connection;
 	  }
 
-# 7. JNDI类型DataSource
+## JNDI类型DataSource
 　　MyBatis定义了一个JndiDataSourceFactory来创建JDNI形式的数据源，具体配置参考各容器的文档。

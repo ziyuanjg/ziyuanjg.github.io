@@ -6,25 +6,25 @@ tags: MyBatis
 　　前面提到了SqlSession很懒，操作都下放给了Executor这个执行者，Executor是MyBatis的执行器接口，子类如下图：
 ![](/images/mybatis_7.png)
 <!-- more -->
-# 1. BaseExecutor
+## BaseExecutor
 　　BaseExecutor实现了Executor接口的所有方法，采用了模板模式，为下面几个子类提供公共实现。首先看下update方法的源码：
 
- public int update(MappedStatement ms, Object parameter) throws SQLException {
-    ErrorContext.instance().resource(ms.getResource()).activity("executing an update").object(ms.getId());
-    //如果已经关闭则抛出异常
-    if (closed) {
-      throw new ExecutorException("Executor was closed.");
-    }
-    //执行更新操作会清空一级缓存
-    clearLocalCache();
-    //由子类做差异化实现
-    return doUpdate(ms, parameter);
-  }
+	public int update(MappedStatement ms, Object parameter) throws SQLException {
+	    ErrorContext.instance().resource(ms.getResource()).activity("executing an update").object(ms.getId());
+	    //如果已经关闭则抛出异常
+	    if (closed) {
+	      throw new ExecutorException("Executor was closed.");
+	    }
+	    //执行更新操作会清空一级缓存
+	    clearLocalCache();
+	    //由子类做差异化实现
+	    return doUpdate(ms, parameter);
+	  }
 
 由上可见，update的模板方法比较简单，只是清空了以及缓存，外加关闭异常，具体的操作由子类的doUpdate实现决定。下面看下query方法的源码：
 
 	 public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
-	    //获取sql对象
+	   //获取sql对象
 	   BoundSql boundSql = ms.getBoundSql(parameter);
 	   //获取缓存key
 	    CacheKey key = createCacheKey(ms, parameter, rowBounds, boundSql);
@@ -99,7 +99,7 @@ tags: MyBatis
 	  }
 cursor是3.4版本新增的特性，用于以游标的方式返回结果，主要用于数据量很大的业务场景，会分批次读取数据，降低每次对数据库的占用时间。
 
-# 2. SimpleExecutor
+## SimpleExecutor
 　　简单sql执行器，不支持添加参数。这里用doQuery方法进行示例：
 
 	  public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
@@ -128,7 +128,7 @@ cursor是3.4版本新增的特性，用于以游标的方式返回结果，主�
 	    return stmt;
 	  }
 
-# 3. ReuseExecutor
+## ReuseExecutor
 　　可重复使用执行器，内部维护了一个Map<String, Statement>缓存池，在一个session生命周期内相同的statement只会实例化一次。与simple的主要差异在于下面两个方法
 
 	public List<BatchResult> doFlushStatements(boolean isRollback) throws SQLException {
@@ -163,7 +163,7 @@ cursor是3.4版本新增的特性，用于以游标的方式返回结果，主�
 	    return stmt;
 	  }
 
-# 4. BatchExecutor
+## BatchExecutor
 批处理执行器，BatchExecutor内维护了四个变量，分别是
 * statementList：statement执行队列
 * batchResultList：结果集队列
@@ -267,13 +267,13 @@ cursor是3.4版本新增的特性，用于以游标的方式返回结果，主�
 	      batchResultList.clear();
 	    }
 	  }
-# 5. CachingExecutor
+## CachingExecutor
 　　缓存执行器，顾名思义这种执行器内部必定维护了一个缓存区，也主要针对于查询语句，具体代码如下：
 
-	 //实际的操作执行器
-	  private Executor delegate;
-	  //缓存容器，缓存实体TransactionalCache实现了Cache接口
-	  private TransactionalCacheManager tcm = new TransactionalCacheManager();
+	//实际的操作执行器
+	private Executor delegate;
+	//缓存容器，缓存实体TransactionalCache实现了Cache接口
+	private TransactionalCacheManager tcm = new TransactionalCacheManager();
 	public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
 	      throws SQLException {
 	    Cache cache = ms.getCache();

@@ -9,18 +9,18 @@
   
   <title>MyBatis源码解析：Plugin | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。 1. Plugin可以做什么　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、Param">
+  <meta name="description" content="Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。 Plugin可以做什么　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、Paramete">
 <meta name="keywords" content="MyBatis">
 <meta property="og:type" content="article">
 <meta property="og:title" content="MyBatis源码解析：Plugin">
 <meta property="og:url" content="http://yoursite.com/2017/06/15/mybatis-11/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。 1. Plugin可以做什么　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、Param">
+<meta property="og:description" content="Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。 Plugin可以做什么　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、Paramete">
 <meta property="og:image" content="http://yoursite.com/images/mybatis_23.png">
-<meta property="og:updated_time" content="2017-06-15T09:11:49.675Z">
+<meta property="og:updated_time" content="2017-06-19T07:57:22.397Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="MyBatis源码解析：Plugin">
-<meta name="twitter:description" content="Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。 1. Plugin可以做什么　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、Param">
+<meta name="twitter:description" content="Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。 Plugin可以做什么　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、Paramete">
 <meta name="twitter:image" content="http://yoursite.com/images/mybatis_23.png">
   
     <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
@@ -189,7 +189,7 @@
                 
                 <section class="switch-part switch-part2">
                     <div class="widget tagcloud" id="js-tagcloud">
-                        <a href="/tags/MyBatis/" style="font-size: 10px;">MyBatis</a>
+                        <a href="/tags/JDKCode/" style="font-size: 15px;">JDKCode</a> <a href="/tags/MyBatis/" style="font-size: 20px;">MyBatis</a> <a href="/tags/算法/" style="font-size: 10px;">算法</a>
                     </div>
                 </section>
                 
@@ -301,8 +301,8 @@
       
           
         <p>　　Plugin类实现了InvocationHandler接口，  是MyBatis对java动态代理的一个扩展，用来支持Mybatis自身的plugins插件开发。</p>
-<h1 id="1-Plugin可以做什么"><a href="#1-Plugin可以做什么" class="headerlink" title="1. Plugin可以做什么"></a>1. Plugin可以做什么</h1><p>　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。<br><a id="more"></a></p>
-<h1 id="2-Plugin如何工作"><a href="#2-Plugin如何工作" class="headerlink" title="2. Plugin如何工作"></a>2. Plugin如何工作</h1><p><img src="/images/mybatis_23.png" alt=""></p>
+<h2 id="Plugin可以做什么"><a href="#Plugin可以做什么" class="headerlink" title="Plugin可以做什么"></a>Plugin可以做什么</h2><p>　　作为一个插件模块，Plugin实际上是一种拦截器，在SqlSession的执行流程中不难发现，其实在创建Executor、StatementHandler、ResultSetHandler、ParameterHandler的实例时都会使用Configuration中的插件队列依次进行代理，结合MetaObject就可以对sql的执行过程做一些定制化的修改，比如常用的分页，分库分表，读写分离，分类缓存等。<br><a id="more"></a></p>
+<h2 id="Plugin如何工作"><a href="#Plugin如何工作" class="headerlink" title="Plugin如何工作"></a>Plugin如何工作</h2><p><img src="/images/mybatis_23.png" alt=""></p>
 <p>　　要使用Plugin首先要在config中进行配置</p>
 <pre><code>&lt;plugins&gt;
     &lt;plugin interceptor=&quot;interceptor.ExampleInterceptor&quot;&gt;&lt;/plugin&gt;
@@ -369,15 +369,21 @@ public static Object wrap(Object target, Interceptor interceptor) {
   //执行被拦截方法
         return invocation.proceed();
     }
-</code></pre><h1 id="3-多个Plugin的执行顺序"><a href="#3-多个Plugin的执行顺序" class="headerlink" title="3. 多个Plugin的执行顺序"></a>3. 多个Plugin的执行顺序</h1><p>　　上边既然提到了拦截器链，那自然是可以配置多个Plugin的</p>
+</code></pre><h2 id="多个Plugin的执行顺序"><a href="#多个Plugin的执行顺序" class="headerlink" title="多个Plugin的执行顺序"></a>多个Plugin的执行顺序</h2><p>　　上边既然提到了拦截器链，那自然是可以配置多个Plugin的</p>
 <pre><code>&lt;plugins&gt;
          &lt;plugin interceptor=&quot;interceptor.Interceptor1&quot;&gt;&lt;/plugin&gt;
          &lt;plugin interceptor=&quot;interceptor.Interceptor2&quot;&gt;&lt;/plugin&gt;
          &lt;plugin interceptor=&quot;interceptor.Interceptor3&quot;&gt;&lt;/plugin&gt;
  &lt;/plugins&gt;
-</code></pre><p>　　上面配置了三个Plugin，在创建运行环境（Configuration）时会依次将Plugin注册在拦截器中，但是为对象绑定代理时顺序则出现了一些不一样的地方，代理的执行顺序却不一定与绑定的顺序一致。如上面的intercept方法：<br>　　<br>    public Object intercept(Invocation invocation) throws Throwable {<br>            //TODO1<br>      invocation.proceed();<br>            //TODO2<br>        }<br>　　如果是这种形式的拦截器，则会先执行TODO1，然后执行下级拦截器，之后再转回TODO2。</p>
-<h1 id="4-拦截器的优缺点"><a href="#4-拦截器的优缺点" class="headerlink" title="4. 拦截器的优缺点"></a>4. 拦截器的优缺点</h1><p>　　在漫长的开发过程中，因为人自身的问题导致的程序bug层出不穷，框架就是在这种情况下应运而生，框架简化了编码的操作，极大的拉进了技术人员的差距，但是框架也封装了底层的操作，使得开发人员对程序的把控程度更低了，如果框架的一小部分不适合实际的业务，但是又无法更换框架的时候就需要Plugin这种存在，Plugin是MyBatis主动提供出来的流程修改入口，只要你想，甚至可以改变SqlSession的执行流程。</p>
-<p>　　Plugin可以使得开发人员可以根据具体业务对MyBatis的底层做适当的干涉，但是这里就牵涉到第一个问题，人员的问题，如果开发人员自身技术不是很深入，有可能导致整个流程崩溃！一定要慎用！<br>而且过多的拦截器会极大的消耗服务器资源，导致运行缓慢。</p>
+</code></pre><p>　　上面配置了三个Plugin，在创建运行环境（Configuration）时会依次将Plugin注册在拦截器中，但是为对象绑定代理时顺序则出现了一些不一样的地方，代理的执行顺序却不一定与绑定的顺序一致。如上面的intercept方法：</p>
+<pre><code>public Object intercept(Invocation invocation) throws Throwable {
+        //TODO1
+  invocation.proceed();
+        //TODO2
+    }
+</code></pre><p>　　如果是这种形式的拦截器，则会先执行TODO1，然后执行下级拦截器，之后再转回TODO2。</p>
+<h2 id="拦截器的优缺点"><a href="#拦截器的优缺点" class="headerlink" title="拦截器的优缺点"></a>拦截器的优缺点</h2><p>　　在漫长的开发过程中，因为人自身的问题导致的程序bug层出不穷，框架就是在这种情况下应运而生，框架简化了编码的操作，极大的拉进了技术人员的差距，但是框架也封装了底层的操作，使得开发人员对程序的把控程度更低了，如果框架的一小部分不适合实际的业务，但是又无法更换框架的时候就需要Plugin这种存在，Plugin是MyBatis主动提供出来的流程修改入口，只要你想，甚至可以改变SqlSession的执行流程。</p>
+<p>　　Plugin可以使得开发人员可以根据具体业务对MyBatis的底层做适当的干涉，但是这里就牵涉到第一个问题，人员的问题，如果开发人员自身技术不是很深入，有可能导致整个流程崩溃！一定要慎用！而且过多的拦截器会极大的消耗服务器资源，导致运行缓慢。</p>
 
       
     </div>
@@ -389,7 +395,7 @@ public static Object wrap(Object target, Interceptor interceptor) {
         <p><span>本文标题:</span><a  href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></p>
         <p><span>文章作者:</span><a  href="/" title="访问 Arthur 的个人博客">Arthur</a></p>
         <p><span>发布时间:</span>2017年06月15日 - 15时17分</p>
-        <p><span>最后更新:</span>2017年06月15日 - 17时11分</p>
+        <p><span>最后更新:</span>2017年06月19日 - 15时57分</p>
         <p>
             <span>原始链接:</span><a class="post-url" href="/2017/06/15/mybatis-11/" title="MyBatis源码解析：Plugin">http://yoursite.com/2017/06/15/mybatis-11/</a>
             <span class="copy-path" data-clipboard-text="原文: http://yoursite.com/2017/06/15/mybatis-11/　　作者: Arthur" title=""></span>
@@ -426,7 +432,7 @@ public static Object wrap(Object target, Interceptor interceptor) {
 
     <div id="toc" class="toc-article">
     <strong class="toc-title">文章目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-Plugin可以做什么"><span class="toc-number">1.</span> <span class="toc-text">1. Plugin可以做什么</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-Plugin如何工作"><span class="toc-number">2.</span> <span class="toc-text">2. Plugin如何工作</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-多个Plugin的执行顺序"><span class="toc-number">3.</span> <span class="toc-text">3. 多个Plugin的执行顺序</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-拦截器的优缺点"><span class="toc-number">4.</span> <span class="toc-text">4. 拦截器的优缺点</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Plugin可以做什么"><span class="toc-number">1.</span> <span class="toc-text">Plugin可以做什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Plugin如何工作"><span class="toc-number">2.</span> <span class="toc-text">Plugin如何工作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#多个Plugin的执行顺序"><span class="toc-number">3.</span> <span class="toc-text">多个Plugin的执行顺序</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#拦截器的优缺点"><span class="toc-number">4.</span> <span class="toc-text">拦截器的优缺点</span></a></li></ol>
 </div>
 <style>
     .left-col .switch-btn {
@@ -508,7 +514,7 @@ public static Object wrap(Object target, Interceptor interceptor) {
             </a>
         
     </div>
-    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li></ul>
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/AVL/">AVL树的平衡算法（JAVA实现）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-4/">LinkedList源码阅读笔记（基于JDK1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-3/">ArrayList源码阅读笔记(基于JDk1.8)</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-2/">LinkedHashMap源码阅读笔记（基于jdk1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/19/JDKCode-1/">HashMap源码阅读笔记（基于jdk1.8）</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-12/">MyBatis源码解析：动态SQL</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-11/">MyBatis源码解析：Plugin</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-10/">MyBatis源码解析：MetaObject</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-9/">MyBatis源码解析：数据源和连接池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-8/">MyBatis源码解析：Mybatis的缓存机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-7/">MyBatis源码解析：ParameterHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-6/">MyBatis源码解析：ResultSetHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-5/">MyBatis源码解析：StatementHandler</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-4/">MyBatis源码解析：Executor</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-3/">MyBatis源码解析：SqlSession</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-2/">MyBatis源码解析：SqlSessionFactory</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/15/mybatis-1/">MyBatis源码解析：SqlSessionFactoryBuilder</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/14/mybatis/">MyBatis架构设计总结</a></li></ul>
     <script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
     <script>
         $(".post-list").addClass("toc-article");
